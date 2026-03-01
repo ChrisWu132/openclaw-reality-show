@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useGameStore } from "../../stores/gameStore";
 
 export function SituationCard() {
   const situation = useGameStore((s) => s.currentSituation);
   const label = useGameStore((s) => s.situationLabel);
   const [visible, setVisible] = useState(false);
-  const [lastShown, setLastShown] = useState(0);
+  const lastShownRef = useRef(0);
 
   useEffect(() => {
-    if (situation === 0 || situation === lastShown) return;
-    setLastShown(situation);
+    if (situation === 0 || situation === lastShownRef.current) return;
+    lastShownRef.current = situation;
     setVisible(true);
     const timer = setTimeout(() => setVisible(false), 2500);
     return () => clearTimeout(timer);
-  }, [situation, lastShown]);
+  }, [situation]);
 
   if (!visible || !label) return null;
 

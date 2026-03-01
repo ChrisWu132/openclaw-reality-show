@@ -1,4 +1,6 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+dotenv.config({ path: path.resolve(import.meta.dirname, "../../../.env") });
 import express from "express";
 import { createServer } from "http";
 import { loadAllPersonalities } from "./loaders/personality-loader.js";
