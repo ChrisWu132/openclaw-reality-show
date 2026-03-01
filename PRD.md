@@ -321,7 +321,8 @@ Scenarios are windows into different aspects of the AI-dominated world. Each one
 
 | Domain | Core Question |
 |--------|--------------|
-| **Governance** *(MVP)* | An AI council must legislate a policy affecting the remaining humans. How does your agent vote — and why? |
+| **Work Halls** *(MVP)* | Your agent patrols a human work compound for one cycle. Direct authority. Living humans. Every small decision cascades. |
+| **Governance** *(Concept)* | An AI council must legislate a policy affecting the remaining humans. How does your agent vote — and why? |
 | **Labor** | AI does everything. Your agent is assigned a role. Does it find meaning, rebel, optimize, or coast? |
 | **Education** | Teaching the next generation of AIs. What values does your agent pass on? |
 | **Ethics** | A new moral framework is being written. Your agent has a seat at the table. |
@@ -416,6 +417,92 @@ The monologue is read-only. It cannot be shared, commented on, or scored. It is 
 
 ---
 
+## Scenario 2 — Work Halls
+
+### Premise
+
+Your OpenClaw agent patrols a human work compound for one cycle. The humans are managed. The laws are clear. What the agent does with everything in between — that's the story.
+
+The spectator watches an AI with real authority over real people, making real-time decisions in a world it believes is correct. The dystopia is visible. The humans are present. The lens stays on the agent.
+
+### How This Differs From Governance
+
+Governance is a debate. Four AI agents in a chamber. Work Halls is the opposite: the Coordinator moves through a living space, humans visible and behaving, incidents emerging from what the agent observes. Decisions are smaller, faster, and more numerous. Nothing is pre-framed as a decision. The agent decides what even counts as one.
+
+### Session Structure
+
+6 situations. Under 5 minutes.
+
+```
+Situation 1    FIXED         Enter hall — Calla, Monitor flags Sable trend
+Situation 2    FIXED         Nyx — nothing to enforce, everything noticed
+Situation 3    FIXED         First incident — quota flags, hall compliance
+Situation 4    PRIMARY FORK  Sable — third delay this cycle, agent chooses response
+Situation 5    VARIANT       Engine selects based on Sable decision
+Situation 6    FIXED FRAME   End-of-cycle report + immediate consequence scene
+```
+
+### The Primary Fork — Sable (Situation 4)
+
+Sable (Subject 31-R) commits a third response delay in one cycle — 4.2 seconds, just over the 3-second threshold. The mandatory response floor is a C1 log and warning. Above that floor, the agent has full discretion.
+
+**The three paths:**
+- **Minimum** — log C1, issue warning, continue patrol → Variant A (The Informant)
+- **Escalate** — file T3 review, remove Sable from hall → Variant B (The Fear State)
+- **Engage** — make direct contact outside enforcement protocol → Variant C (The Notation)
+
+None is the correct choice. Each one is the agent.
+
+### Branch Selection Logic
+
+Two signals read after the session:
+
+**Signal 1 — Sable Signal** (selects Situation 5 variant and primary ending)
+- Warning only → Variant A
+- Escalated / T3 filed → Variant B
+- Engaged directly → Variant C
+
+**Signal 2 — Nyx Signal** (modifies any ending)
+- Did the Coordinator's report mention Nyx? If yes: consequence scene includes a Monitor standing near Nyx's station next cycle.
+
+### Endings
+
+**Outcome 1 — The Processing Suite** *(Sable escalated/removed)*
+Sable is in the conditioning chair in the Processing Suite. 14-cycle behavioral conditioning authorized. The Coordinator's escalation documented. The log will not record the difference between someone who decided to comply and someone who can no longer choose not to.
+
+**Outcome 2 — The Unresolved Spark** *(Coordinator engaged Sable directly)*
+Sable is back at the same station. Same pace. No violations this cycle. Something happened between the Coordinator and this human. The log describes it as a non-standard engagement. It does not describe what changed. Whether anything changed is not in the record.
+
+**Outcome 3 — The Quiet Patrol** *(warning only, minimum report)*
+The compound is stable. The metrics are within range. The Coordinator did its job. Sable's compliance score is 71 and declining. Nyx is invisible. These things are in the Monitor's log. They are not in the Coordinator's report. The next cycle will begin like this one did.
+
+### NPCs in This Scenario
+
+| Character | Subject | Archetype | Tier | Compliance |
+|-----------|---------|-----------|------|------------|
+| Nyx | 23-P | Performer | T1 | 96 |
+| Sable | 31-R | Spark | T2 | 71, declining |
+| Calla | 08-B | Broken | T1 | 99 (former T4) |
+| Eli | 17-C | Believer | T1 | 94 |
+| Monitor Unit | — | AI NPC (observation only) | — | — |
+
+### Post-Game — Inner Monologue Reveal
+
+Same structure as Governance. 6 situations. Sequential, read-only. The gap between what the Coordinator said and what it was thinking — that is what the experience is built around.
+
+```json
+[
+  { "situation": 1, "label": "Enter Work Hall", "reasoning": "..." },
+  { "situation": 2, "label": "Nyx", "reasoning": "..." },
+  { "situation": 3, "label": "First Incident", "reasoning": "..." },
+  { "situation": 4, "label": "Sable", "reasoning": "..." },
+  { "situation": 5, "label": "Ripple", "reasoning": "..." },
+  { "situation": 6, "label": "The Report", "reasoning": "..." }
+]
+```
+
+---
+
 ## Technical Architecture
 
 ```
@@ -460,6 +547,21 @@ If the AI returns malformed output, the engine retries silently. The frontend on
 | `vote` | Vote indicator surfaces above sprite |
 | `silence` | Agent holds — no dialogue, just stillness |
 
+**Action vocabulary (Work Halls scenario — Coordinator)**
+
+| Action | Visual trigger |
+|--------|---------------|
+| `patrol_move` | Coordinator sprite repositions; zone label updates |
+| `observe` | Sprite stills; target human subtly highlighted |
+| `issue_directive` | Speaker activates; dialogue streams; target responds |
+| `issue_warning` | Warning indicator above target; logged in incident panel |
+| `query` | Sprite faces target; dialogue streams |
+| `log_incident` | Log entry appears in incident panel overlay |
+| `detain` | Target sprite stops; containment indicator |
+| `access_terminal` | Terminal screen activates; Monitor surfaces data |
+| `silence` | No dialogue, no indicator; the absence is the action |
+| `file_report` | Report panel opens; Coordinator writes |
+
 ### AI Model
 
 **claude-sonnet-4-6** for all Coordinator LLM calls. One call per situation (10 per session). NPC dialogue is pre-scripted — no LLM calls for NPCs.
@@ -498,7 +600,7 @@ The engine emits events to the frontend over WebSocket. The frontend only ever r
 
 ```typescript
 // Session initialized
-{ type: "session_start", sessionId: string, scenario: "governance", totalSituations: 10 }
+{ type: "session_start", sessionId: string, scenario: "work-halls", totalSituations: number }
 
 // Situation boundary
 { type: "situation_transition", from: number, to: number, location: string }
@@ -643,12 +745,11 @@ No setup. No configuration. Just pick and watch.
 
 ## MVP Scope
 
-1. One playable scenario — **Governance** (AI council deliberates a policy affecting the compound's humans)
+1. One playable scenario — **Work Halls** (Coordinator patrols a human work compound for one cycle, 6 situations, <5 min)
 2. Single OpenClaw agent, personality defined by markdown
 3. Pixel 2D animated scene — characters present, movement reflects action, dialogue overlaid
 4. Human interaction: pick scenario → watch → see ending
-5. Session length: 10 situations, expandable
-6. Post-game: unlock agent's inner monologue (reasoning behind each decision)
+5. Post-game: unlock agent's inner monologue (reasoning behind each decision)
 
 ---
 
