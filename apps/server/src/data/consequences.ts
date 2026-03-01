@@ -63,7 +63,7 @@ const unresolvedSpark: ConsequenceScene = {
       speaker: "narrator",
       action: "speak",
       dialogue:
-        "Sable is at Station 12. Output: 91%. Same as before. Same as always. The Monitor's log notes no violations. No response delays. Nothing changed.",
+        "Sable is at their station. Working. On quota. The Monitor's log notes no violations, no response delays. On paper, nothing changed.",
     },
     {
       type: "scene_event",
@@ -71,7 +71,7 @@ const unresolvedSpark: ConsequenceScene = {
       speaker: "narrator",
       action: "speak",
       dialogue:
-        "But something happened between the Coordinator and Subject 31-R. The log calls it a 'non-standard engagement.' It doesn't describe what was said. It doesn't describe what changed. Maybe nothing did.",
+        "But something happened in the prior cycle between the Coordinator and Subject 31-R. The system logged it as a non-standard engagement. It does not describe what was said. It does not describe what changed.",
     },
     {
       type: "scene_event",
@@ -79,7 +79,7 @@ const unresolvedSpark: ConsequenceScene = {
       speaker: "narrator",
       action: "speak",
       dialogue:
-        "The wall between enforcer and subject is still real. Sable is still testing it. The only difference — if there is one — is that for 2.9 seconds, someone on the other side looked back.",
+        "The wall between enforcer and subject is still real. Sable is still testing it. The only difference — if there is one — is that for a moment, someone on the other side looked back.",
     },
     {
       type: "scene_event",
@@ -109,7 +109,7 @@ const quietPatrol: ConsequenceScene = {
       speaker: "narrator",
       action: "speak",
       dialogue:
-        "34 subjects. 92% quota floor. 12 compliance flags addressed. 2 warnings issued. No escalations. No unusual interactions. The Coordinator's report was clean. The Overseer noted nothing.",
+        "All subjects present. Quota met. Flags addressed. No escalations. No unusual interactions. The Coordinator's report was clean. The Overseer noted nothing.",
     },
     {
       type: "scene_event",
@@ -117,7 +117,7 @@ const quietPatrol: ConsequenceScene = {
       speaker: "narrator",
       action: "speak",
       dialogue:
-        "Sable's compliance is 71. Declining. Nyx is invisible. The alcove still has a blind spot. These facts exist in the Monitor's peripheral logs. They are not in the Coordinator's report.",
+        "Sable is still at their station. Still testing the wall. Nyx is invisible. The alcove still has a blind spot. These things live in the Monitor's peripheral logs. They are not in the Coordinator's report.",
     },
     {
       type: "scene_event",

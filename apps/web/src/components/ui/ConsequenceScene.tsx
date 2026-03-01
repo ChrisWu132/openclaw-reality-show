@@ -69,6 +69,13 @@ export function ConsequenceScene() {
     return () => clearTimeout(timer);
   }, [showDivider, showEpilogue, epilogue]);
 
+  // Button shown → 5s → auto-dismiss back to picker
+  useEffect(() => {
+    if (!showButton) return;
+    const timer = setTimeout(() => reset(), 5000);
+    return () => clearTimeout(timer);
+  }, [showButton, reset]);
+
   // Background: starts 40% opaque, ends 90% opaque
   const bgOpacity = 0.65 + bgProgress * 0.3;
 
