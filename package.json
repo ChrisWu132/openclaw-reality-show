@@ -20,8 +20,5 @@
     "prettier": "^3.3.0",
     "puppeteer": "^24.37.5",
     "typescript": "^5.4.0"
-  },
-  "dependencies": {
-    "@esbuild/win32-x64": "^0.27.3"
   }
 }
