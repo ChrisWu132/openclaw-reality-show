@@ -46,11 +46,19 @@ export function DialogueOverlay() {
       const latest = sceneEvents[sceneEvents.length - 1];
       lastProcessedRef.current = sceneEvents.length;
 
-      // Skip events with no dialogue
-      if (!latest.dialogue) return;
-
-      // Skip hidden system actions
-      if (HIDDEN_ACTIONS.has(latest.action)) return;
+      // Skip events with no dialogue or hidden action types
+      if (!latest.dialogue || HIDDEN_ACTIONS.has(latest.action)) {
+        // Non-displayable event popped from queue — if more events are waiting,
+        // auto-advance so the queue doesn't deadlock (waitingForClick stays false
+        // and the click overlay is invisible, so the user cannot manually advance).
+        setTimeout(() => {
+          const { eventQueue, forceDequeueNext } = useGameStore.getState();
+          if (eventQueue.length > 0) {
+            forceDequeueNext();
+          }
+        }, 300);
+        return;
+      }
 
       streamDialogue(latest.speaker, latest.dialogue, latest.action, latest.audioUrl);
     }

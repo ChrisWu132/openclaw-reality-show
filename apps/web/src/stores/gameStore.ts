@@ -57,6 +57,8 @@ interface GameState {
   ) => void;
   /** User clicked — advance to next queued event */
   advanceDialogue: () => void;
+  /** Force-pop next event from queue without requiring waitingForClick (used for non-displayable events) */
+  forceDequeueNext: () => void;
   setWaitingForClick: (waiting: boolean) => void;
   /** Reveal pending reasoning into currentReasoning */
   revealReasoning: () => void;
@@ -176,6 +178,16 @@ export const useGameStore = create<GameState>((set) => ({
       const [next, ...rest] = state.eventQueue;
       return {
         waitingForClick: false,
+        sceneEvents: [...state.sceneEvents, next],
+        eventQueue: rest,
+      };
+    }),
+
+  forceDequeueNext: () =>
+    set((state) => {
+      if (state.eventQueue.length === 0) return state;
+      const [next, ...rest] = state.eventQueue;
+      return {
         sceneEvents: [...state.sceneEvents, next],
         eventQueue: rest,
       };

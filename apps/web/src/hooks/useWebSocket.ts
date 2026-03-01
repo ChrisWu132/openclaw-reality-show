@@ -40,13 +40,16 @@ export function useWebSocket(wsUrl: string | null): void {
     };
 
     ws.onclose = (e) => {
-      if (e.code === 4004 || e.code === 4009) {
-        const state = useGameStore.getState();
-        state.setError(
-          e.code === 4004
-            ? "Session not found"
-            : "Session has already ended",
-        );
+      const state = useGameStore.getState();
+      if (e.code === 4004) {
+        state.setError("Session not found");
+      } else if (e.code === 4009) {
+        state.setError("Session has already ended");
+      } else if (e.code === 4500) {
+        state.setError("The simulation encountered a server error and could not continue.");
+      } else if (e.code !== 1000 && state.phase === "playing") {
+        // Unexpected disconnect mid-session — surface it so the user isn't left staring at a frozen screen
+        state.setError("Connection lost. The simulation has ended.");
       }
     };
 

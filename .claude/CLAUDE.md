@@ -112,6 +112,9 @@ The running incident log is a markdown document that grows through the session. 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-01: [frontend] Fix dialogue queue deadlock after non-displayable events
+  - Files modified: apps/web/src/stores/gameStore.ts, apps/web/src/components/scene/DialogueOverlay.tsx, apps/web/src/hooks/useWebSocket.ts
+  - Breaking changes: no
 - 2026-03-01: [audio] ElevenLabs voice narration for all scene dialogue
   - Files created: apps/server/src/ai/voice-config.ts, apps/server/src/ai/tts-service.ts, apps/web/src/hooks/useNarration.ts, scripts/generate-audio.ts
   - Files modified: packages/shared/src/types/ws-events.ts (audioUrl field), apps/server/src/engine/scene-engine.ts (TTS calls), apps/server/src/index.ts (audio cache dir + static serve), apps/web/src/components/layout/App.tsx (useNarration hook), apps/web/vite.config.ts (/audio proxy), .env.example (ElevenLabs vars), package.json (generate-audio script)
