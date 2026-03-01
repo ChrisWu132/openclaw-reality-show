@@ -654,10 +654,6 @@ No setup. No configuration. Just pick and watch.
 
 ## Open Questions
 
-### Scenario Design (resolve before situation scripts are written)
-
-- [ ] Write the 10 pre-scripted situation scripts for the Governance scenario — fixed scripts for situations 1–4, 2–3 variant scripts each for situations 5–9, and the two consequence scene scripts (passed/failed).
-
 ### Product (resolve later)
 
 - [ ] Multi-agent scenarios — when and how?
