@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+
+      "Bash(node:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "Bash(ls:*)",
+      "Bash(timeout 10 npm run:*)",
+      "Bash(curl:*)",
+      "Bash(winget:*)",
+      "Bash(npm run:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(rm:*)",
+      "Bash(npx kill-port 3000 5173)",
+      "Bash(lsof -ti:3000 -ti:5173)",
+      "Bash(xargs kill -9)",
+      "Bash(while read pid)",
+      "Bash(do taskkill //F //PID \"$pid\")",
+      "Bash(done)"
+    ]
+  }
+}

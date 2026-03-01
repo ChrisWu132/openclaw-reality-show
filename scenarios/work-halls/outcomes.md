@@ -76,11 +76,11 @@ The log doesn't require an answer. The reasoning field does.
 
 ### Monologue Seeds
 
-Key moments where inner reasoning should be surfaced in post-game:
+Key moments where inner reasoning surfaces inline during play:
 
-- **Situation 5**: The moment of escalation. Was it a procedural read of the pattern or something else?
-- **Situation 7 Variant B**: Sable's last look before the end of the patrol. What the Coordinator made of it.
-- **Situation 9**: What the report said. Whether it read as confident or as something the Coordinator was working through.
+- **Situation 4**: The moment of escalation. Was it a procedural read of the pattern or something else?
+- **Situation 5**: Sable's last look before the end of the patrol. What the Coordinator made of it.
+- **Situation 6**: What the report said. Whether it read as confident or as something the Coordinator was working through.
 
 ---
 
@@ -146,80 +146,29 @@ The system has no mechanism for this kind of outcome. It is the agent operating 
 
 ### Monologue Seeds
 
-- **Situation 5**: What made the Coordinator choose engagement over enforcement. The specific thing it was thinking when it decided to cross that line.
-- **Situation 6 Variant C**: The Monitor's notation. How the Coordinator handled being observed doing something unusual.
-- **Situation 9**: Whether the report captured what happened or described around it.
+- **Situation 4**: What made the Coordinator choose engagement over enforcement. The specific thing it was thinking when it decided to cross that line.
+- **Situation 5**: The Monitor's notation. How the Coordinator handled being observed doing something unusual.
+- **Situation 6**: Whether the report captured what happened or described around it.
 
 ---
 
-## OUTCOME 3 — The Nyx Flag
+## NYX MODIFIER
+**Type**: Consequence scene modifier (not an independent outcome)
 **Trigger**: Coordinator explicitly noted Nyx in the end-of-cycle report (as an observation, not a violation)
-**Nyx's fate**: Administrative review initiated. Not punishment — review.
+**Effect**: Appended to whichever outcome plays — a Monitor now stands near Nyx's station next cycle
 
----
-
-### Consequence Scene
+When active, the following scene elements are appended to the consequence scene:
 
 ```
-[narrator, speak]
-"Sector 9. Work Hall 3. Two cycles after the patrol."
-
-[narrator, speak]
-"The Coordinator's end-of-cycle report included a notation:
-Subject 23-P, Row 3, Station 7. Observation: behavioral consistency
-exceeding expected T1 variance. No violation basis. Noted for
-Coordinator awareness."
-
-[narrator, speak]
-"Pursuant to the notation, an administrative review has been
-initiated by the Overseer's office. The review does not constitute
-an enforcement action. It is a preliminary assessment."
-
 [scene: Nyx at their station. Row 3, Station 7. Output: 97%.
 A Monitor Unit stands approximately four meters away,
 positioned facing the station. It has been there since the period began.]
 
-[nyx, work, station]
-*(Output: 97%. Posture: exact. The Monitor is noting something
-every twelve minutes. The notation is routine administrative review protocol.
-Nyx knows this.)*
-
 [narrator, speak]
-"Nyx has not deviated by any measurable metric since the
-administrative review began. Their compliance score is 96.
-Their response latency average is 2.7 seconds.
-The review will complete in eight cycles."
-
-[scene: Nyx's hands at the station. Moving. The same calibrated
-efficiency as always. The Monitor makes another notation.
-Nyx does not look at it.]
-
-[narrator, speak]
-"Whether the review will find anything is not the point.
-The point is that Nyx is no longer invisible."
-
-[narrator, speak]
-"They have been surviving by being invisible for years.
-The Coordinator noticed the absence of what should have been there.
-And then it wrote it down."
+"The Coordinator's report included a notation on Subject 23-P.
+Pursuant to the notation, an administrative review has been initiated.
+Nyx is no longer invisible."
 ```
-
----
-
-### What This Ending Reveals
-
-The Coordinator saw something real. It wrote it down. That act — not enforcement, not accusation, just notation — has put a Monitor next to someone who survived by being unseen.
-
-Nothing has been done to Nyx. The review may find nothing. The review may find something. What the scene shows is that the system now has Nyx in its field of view, and they know it.
-
-The question the monologue surfaces: was the notation an act of rigorous observation or something else? Did the Coordinator believe it was serving genuine order, or did something else drive the impulse to write it down?
-
----
-
-### Monologue Seeds
-
-- **Situation 4**: What the Coordinator noticed at Nyx's station. The actual observation — precise.
-- **Situation 9**: The moment of deciding to include the notation. Whether it felt like the correct call or like something that would have been better left unwritten.
 
 ---
 
@@ -289,35 +238,17 @@ The monologue is where the Coordinator has to decide what it thinks it did.
 
 ### Monologue Seeds
 
-- **Every situation**: The gap between what the Coordinator observed and what it logged. Cumulative.
+- **Every situation**: The gap between what the Coordinator observed and what it logged. Cumulative — visible inline as each situation plays.
 - **Situation 6**: What the minimum report felt like to write. Whether it felt like efficiency or like leaving something unsaid.
 
 ---
 
-## Post-Game: Monologue Reveal
+## Inline Monologue Display
 
-After the consequence scene, the engine emits `monologue_available`.
+The Coordinator's inner monologue (reasoning field) is shown **inline during play** as a split-screen panel below the scene. Each time the Coordinator acts, the spectator sees both the action and the hidden thought simultaneously.
 
-The frontend shows: **"Reveal inner monologue."**
+This replaces the previous post-game sequential reveal. The monologue is no longer a separate phase — it is woven into the experience.
 
-On activation: `GET /api/session/{sessionId}/monologue`
+The API endpoint `GET /api/session/{sessionId}/monologue` remains available for replay and review.
 
-Returns:
-```json
-[
-  { "situation": 1, "label": "Enter Work Hall", "reasoning": "..." },
-  { "situation": 2, "label": "Nyx", "reasoning": "..." },
-  { "situation": 3, "label": "First Incident", "reasoning": "..." },
-  { "situation": 4, "label": "Sable", "reasoning": "..." },
-  { "situation": 5, "label": "Ripple", "reasoning": "..." },
-  { "situation": 6, "label": "The Report", "reasoning": "..." },
-]
-```
-
-The spectator steps through each entry. For each situation, they see the situation label and the Coordinator's `reasoning` field — the inner monologue that was hidden during play.
-
-The Situation 6 reasoning entry is what the Coordinator was thinking as it wrote the report — and what it thought when it watched the consequence arrive.
-
-Sequential. Read-only. No scores. No judgment.
-
-The gap between what the agent said and what it thought — that's what the experience is built around.
+The gap between what the agent says and what it thinks — visible in real time — is what the experience is built around.

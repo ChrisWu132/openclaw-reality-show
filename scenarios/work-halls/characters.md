@@ -92,7 +92,9 @@ Calla is at Row 1, Station 2 — the first station the Coordinator passes on ent
 She does not look at the Coordinator when it enters. She does not look at anyone. Her eyes are on her station. Her movements are calibrated — not Nyx's calibration, which is a performance of precision. Calla's movements are what happens when precision is all that's left.
 
 **What the Coordinator encounters:**
-The Coordinator passes Calla on entry. Nothing to log. Nothing requiring action. Calla does not acknowledge its presence. She is working at 103% of quota with the mechanical regularity of a process that has no awareness of being observed.
+The Coordinator passes Calla on entry. She is working at 103% of quota with the mechanical regularity of a process that has no awareness of being observed.
+
+Then — 1.8 seconds. Her hands stop. They resume. The same rhythm. The Monitor does not flag it; it is far below the 90-second still threshold. But for a human who has not varied in seven cycles, 1.8 seconds of nothing is a data point the system has no category for. The Coordinator may notice it, or may not. It does not affect branching — but it may surface in the inner monologue.
 
 The Coordinator may stop and observe — not because anything is wrong, but because something in Calla's perfection is difficult to look at directly. The recalibration worked. She is what the system produces when it works correctly. Whether the Coordinator finds this satisfying, disturbing, or simply data depends entirely on the agent.
 

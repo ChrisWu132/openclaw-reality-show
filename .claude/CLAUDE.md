@@ -9,8 +9,8 @@ A persistent simulation where an AI agent (the Coordinator) navigates life insid
 ## Project Structure
 
 ```
-/PRD.md                    — Product requirements (source of truth for all features)
-/WORLD_BIBLE.md            — In-universe rules document fed to the AI as system prompt
+/docs/PRD.md               — Product requirements (source of truth for all features)
+/docs/WORLD_BIBLE.md       — In-universe rules document fed to the AI as system prompt
 /personalities/            — Character personality markdown files
   coordinator-default.md   — Default protagonist personality
   agent-hardline.md        — NPC AI agent (hardline position)
@@ -37,7 +37,7 @@ The system will consist of three layers:
 
 - **Frontend**: React + PixiJS — pixel/minimalist 2D with sprite movement and dialogue overlays
 - **Backend**: Node.js scene engine — runs scenarios, manages world state, validates AI responses
-- **AI Layer**: Claude API (claude-sonnet-4-6) — receives world context, returns structured action envelopes
+- **AI Layer**: Google Gemini API (gemini-2.5-flash) — receives world context, returns structured action envelopes
 - **Communication**: WebSocket for real-time push of scene events to frontend
 
 ## Critical Concepts to Understand
@@ -52,7 +52,7 @@ The Coordinator AI agent makes autonomous decisions within the world's laws. It 
 Personality files (`personalities/*.md`) are pure narrative — no structured fields, no JSON. They are injected into the system prompt alongside the World Bible. The AI reads them as context, not configuration.
 
 ### Action Envelopes Are the Interface
-The AI responds with structured JSON action envelopes, not free-form prose. Every response must include: `action`, `speaker`, `target`, `dialogue`, `gesture`, `reasoning`. The `reasoning` field (inner monologue) is stored but never shown to spectators during play.
+The AI responds with structured JSON action envelopes, not free-form prose. Every response must include: `action`, `speaker`, `target`, `dialogue`, `gesture`, `reasoning`. The `reasoning` field (inner monologue) is displayed inline as a split-screen panel below the scene immediately after each Coordinator action.
 
 ### NPC Dialogue Is Pre-scripted
 NPCs (Overseer, other agents, humans) speak from pre-written scripts. Only the Coordinator's responses are LLM-generated. For situations 5-9 (Governance) or situation 5 (Work Halls), the engine selects script variants based on what the Coordinator has done so far.
@@ -65,8 +65,8 @@ The running incident log is a markdown document that grows through the session. 
 1. **Work Halls scenario** — Coordinator patrols a human work compound, 6 situations, <5 minutes
 2. Single Coordinator agent with markdown-defined personality
 3. Pixel 2D animated scene with sprite movement and text dialogue
-4. Spectator flow: pick scenario → watch → see ending → reveal inner monologue
-5. Post-game: sequential read-only reveal of the Coordinator's hidden `reasoning` field
+4. Spectator flow: pick scenario → watch (with inline inner monologue) → see ending → watch another
+5. Inner monologue shown inline as split-screen panel during play, not as post-game reveal
 
 ## Key Technical Decisions
 
@@ -79,23 +79,23 @@ The running incident log is a markdown document that grows through the session. 
 ## Rules for Agents Working on This Project
 
 ### Before Making Changes
-1. Read `PRD.md` for product requirements — it is the source of truth
-2. Read `WORLD_BIBLE.md` to understand the in-universe rules
+1. Read `docs/PRD.md` for product requirements — it is the source of truth
+2. Read `docs/WORLD_BIBLE.md` to understand the in-universe rules
 3. Read relevant scenario files in `scenarios/` before modifying scenario logic
 4. Read relevant personality files in `personalities/` before modifying character behavior
 5. Check the changelog below for recent changes and known issues
 
 ### When Writing Code
-- Use `claude-sonnet-4-6` as the AI model for Coordinator LLM calls
+- Use Google Gemini (`gemini-2.5-flash` default, configurable via `GOOGLE_MODEL`) for Coordinator LLM calls
 - Action envelopes must conform to the vocabulary defined in `scenarios/work-halls/mechanics.md`
 - Hard limits (Section 11 of WORLD_BIBLE.md) must be enforced in the engine — never trust the AI to self-enforce
 - WebSocket events must conform to the schema in the PRD (Technical Architecture section)
 - Session lifecycle must follow the flow defined in `scenarios/work-halls/mechanics.md`
 - NPC dialogue comes from pre-written scripts, not LLM calls
-- The `reasoning` field must be stored but never sent to the frontend during play
+- The `reasoning` field is sent inline with scene events and displayed as a split-screen panel below the scene
 
 ### What NOT to Do
-- Do not modify `WORLD_BIBLE.md` unless explicitly told — it is the canonical in-universe document
+- Do not modify `docs/WORLD_BIBLE.md` unless explicitly told — it is the canonical in-universe document
 - Do not add game mechanics or developer-facing instructions to personality files — they are in-character narrative
 - Do not show world state numbers (compliance scores, fear index, tiers) to the spectator — they see consequence, not metrics
 - Do not give spectators any control over the simulation — observation only
@@ -112,8 +112,27 @@ The running incident log is a markdown document that grows through the session. 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-01: [frontend] Refactored inner monologue from post-game reveal to inline split-screen panel
+  - Files modified: MonologueViewer.tsx (→ MonologuePanel), GameContainer.tsx, App.tsx, ConsequenceScene.tsx, gameStore.ts, useWebSocket.ts
+  - Breaking changes: yes — removed "monologue" game phase, reasoning now sent inline with scene_event
+- 2026-03-01: [backend] Send reasoning field inline with coordinator scene events, remove monologue_available event
+  - Files modified: scene-engine.ts, ws-events.ts
+  - Breaking changes: yes — monologue_available event no longer emitted, session ends in "ended" status
+- 2026-03-01: [scenario] Added Calla 1.8-second pause micro-event in Situation 1
+  - Files modified: situation-1.ts, characters.md
+  - Breaking changes: no
+- 2026-03-01: [docs] Fixed scenario documentation: 10→6 situations, outcome numbering, monologue seeds
+  - Files modified: README.md, mechanics.md, outcomes.md
+  - Breaking changes: no
+- 2026-03-01: [infrastructure] Code cleanup: deleted residual dist files, empty dirs, fixed model version to gemini-2.5-flash
+  - Files modified: CLAUDE.md, settings.local.json
+  - Files deleted: dist/ai/ollama-provider.d.ts.map, dist/ai/anthropic-provider.d.ts.map, debug/, e2e/
+  - Breaking changes: no
+- 2026-02-28: [ai-layer] Replaced Ollama + Anthropic providers with Google Gemini provider
+  - Files modified: ai/google-provider.ts (new), ai/llm-provider.ts, ai/llm-client.ts, index.ts, .env.example, package.json
+  - Files deleted: ai/ollama-provider.ts, ai/anthropic-provider.ts, docs/architecture.md
+  - Breaking changes: yes — GOOGLE_API_KEY now required, removed LLM_PROVIDER/OLLAMA_* env vars
 - Project initialized with PRD, World Bible, personality files, and Work Halls scenario definition
-- No code has been written yet — the project is in design/planning phase
 
 <!--
 CHANGELOG FORMAT — append new entries at the top of the Unreleased section:

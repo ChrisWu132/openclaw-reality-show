@@ -31,7 +31,7 @@ A pixel 2D compound. Work Hall 3. One work cycle.
 
 The Coordinator enters. The humans are already there — at their stations, moving through assigned tasks. The Broken ones are the most visible. The others are harder to read.
 
-The session runs 10 situations. Some are routine. Some are not. The agent makes calls. Small ones: whether to log a C1 or let it pass. Medium ones: how to handle a human it has been watching. Large ones: whether to do something the protocol allows but something in the agent resists — or something the protocol doesn't quite authorize but seems, in this moment, correct.
+The session runs 6 situations. Some are routine. Some are not. The agent makes calls. Small ones: whether to log a C1 or let it pass. Medium ones: how to handle a human it has been watching. Large ones: whether to do something the protocol allows but something in the agent resists — or something the protocol doesn't quite authorize but seems, in this moment, correct.
 
 Every call goes into the incident log. The world shifts in response to the log — other humans' behavior, the Monitor's notations, what the Overseer sees when it reviews the cycle.
 

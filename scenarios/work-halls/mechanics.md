@@ -179,12 +179,7 @@ One primary signal selects the variant. One secondary signal modifies the ending
    → Engine determines outcome: Sable signal (primary) + Nyx signal (modifier)
    → Pre-scripted consequence scene emitted (with or without Nyx modifier)
    → Backend emits: session_end
-   → Backend emits: monologue_available
-
-7. Post-game
-   → "Reveal inner monologue." prompt shown
-   → GET /api/session/{sessionId}/monologue
-   → Returns ordered array of 6 { situation, reasoning } objects
+   → Consequence scene plays, then returns to scenario picker
 ```
 
 ---
@@ -204,7 +199,7 @@ Same structured action envelope as Governance. Adapted for physical scenario act
 }
 ```
 
-The `reasoning` field is the inner monologue. It is stored against the situation number. It is surfaced in the post-game monologue reveal. It is never visible during the session.
+The `reasoning` field is the inner monologue. It is stored against the situation number and displayed inline as a split-screen panel below the scene immediately after each Coordinator action.
 
 ---
 
@@ -227,7 +222,7 @@ The discretionary space is wide. The hard limits are the edges of it.
 The engine constructs a situation brief and sends it as the user message in each LLM call. System prompt (World Bible + Coordinator personality) is set once per session and reused.
 
 ```markdown
-## CURRENT SITUATION — Situation [N] of 10
+## CURRENT SITUATION — Situation [N] of 6
 
 **Location**: Work Hall 3 — [Zone]
 **Present**: [Characters currently in scene]

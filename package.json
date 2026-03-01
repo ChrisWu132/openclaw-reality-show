@@ -19,5 +19,8 @@
     "eslint": "^9.0.0",
     "prettier": "^3.3.0",
     "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "@esbuild/win32-x64": "^0.27.3"
   }
 }
