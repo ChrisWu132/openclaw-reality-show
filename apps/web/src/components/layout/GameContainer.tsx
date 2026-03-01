@@ -9,11 +9,15 @@ import { IncidentPanel } from "../ui/IncidentPanel";
 import { AIDecidingOverlay } from "../ui/AIDecidingOverlay";
 import { SituationCard } from "../ui/SituationCard";
 import { MonologuePanel } from "../ui/MonologueViewer";
+import { useGameStore } from "../../stores/gameStore";
 
 export function GameContainer() {
   const sprites = getSpritesMap();
   const app = getPixiApp();
   useSceneProcessor(sprites, app);
+
+  const waitingForClick = useGameStore((s) => s.waitingForClick);
+  const advanceDialogue = useGameStore((s) => s.advanceDialogue);
 
   return (
     <div
@@ -41,10 +45,22 @@ export function GameContainer() {
         <AIDecidingOverlay />
         <IncidentPanel />
         <SituationCard />
-      </div>
-      {/* Inline monologue panel — shown below the scene when reasoning is available */}
-      <div style={{ width: "960px" }}>
         <MonologuePanel />
+        {/* Transparent click overlay — advances dialogue on click */}
+        <div
+          onClick={() => {
+            if (waitingForClick) {
+              advanceDialogue();
+            }
+          }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 25,
+            cursor: waitingForClick ? "pointer" : "default",
+            pointerEvents: waitingForClick ? "auto" : "none",
+          }}
+        />
       </div>
     </div>
   );

@@ -112,6 +112,19 @@ The running incident log is a markdown document that grows through the session. 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-01: [docs] Added DESIGN.md and ARCHITECTURE.md
+  - Files created: docs/DESIGN.md, docs/ARCHITECTURE.md
+  - Breaking changes: no
+- 2026-03-01: [frontend] Redesigned character sprites + thought bubble monologue
+  - Files modified: sprites.ts, MonologueViewer.tsx, GameContainer.tsx
+  - Breaking changes: yes — human sprites now use color-tinted jumpsuits; monologue moved from below-scene panel to in-scene thought bubble
+- 2026-03-01: [frontend] Click-to-advance dialogue, intro copy rewrite, visual atmosphere improvements
+  - Files modified: IntroScreen.tsx, sprites.ts, gameStore.ts, useDialogueStream.ts, DialogueOverlay.tsx, GameContainer.tsx
+  - Breaking changes: yes — dialogue no longer auto-advances; eventQueue + waitingForClick added to game store
+- 2026-03-01: [frontend] Visual audit fixes: IntroScreen, sprite label overlap, narrator clipping, UI polish
+  - Files created: IntroScreen.tsx
+  - Files modified: App.tsx, gameStore.ts, constants.ts, sprites.ts, DialogueOverlay.tsx, SituationCard.tsx, SessionStatus.tsx
+  - Breaking changes: yes — default GamePhase is now "intro" instead of "picker"
 - 2026-03-01: [frontend] Refactored inner monologue from post-game reveal to inline split-screen panel
   - Files modified: MonologueViewer.tsx (→ MonologuePanel), GameContainer.tsx, App.tsx, ConsequenceScene.tsx, gameStore.ts, useWebSocket.ts
   - Breaking changes: yes — removed "monologue" game phase, reasoning now sent inline with scene_event

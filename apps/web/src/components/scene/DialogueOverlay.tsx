@@ -35,7 +35,7 @@ const SYSTEM_ACTIONS = new Set([
 ]);
 
 export function DialogueOverlay() {
-  const { displayText, isStreaming, speaker, action, streamDialogue } =
+  const { displayText, isStreaming, doneStreaming, speaker, action, streamDialogue } =
     useDialogueStream();
   const sceneEvents = useGameStore((s) => s.sceneEvents);
   const lastProcessedRef = useRef(0);
@@ -72,8 +72,8 @@ export function DialogueOverlay() {
           bottom: 0,
           left: 0,
           right: 0,
-          padding: "12px 24px",
-          background: "linear-gradient(transparent, rgba(0, 0, 0, 0.95))",
+          padding: "12px 24px 16px",
+          background: "linear-gradient(transparent 0%, rgba(0, 0, 0, 0.85) 40%)",
           zIndex: 20,
           pointerEvents: "none",
           animation: "fadeIn 0.3s ease-in",
@@ -89,10 +89,13 @@ export function DialogueOverlay() {
             fontStyle: "italic",
             maxWidth: "700px",
             margin: "0 auto",
+            maxHeight: "54px",
+            overflow: "hidden",
           }}
         >
           {displayText}
           {isStreaming && <BlinkingCursor color="#808090" />}
+          {doneStreaming && <AdvanceIndicator color="#808090" />}
         </div>
       </div>
     );
@@ -149,6 +152,7 @@ export function DialogueOverlay() {
             displayText
           )}
           {isStreaming && <BlinkingCursor color="#d0d0e0" />}
+          {doneStreaming && <AdvanceIndicator color={color} />}
         </div>
       </div>
     );
@@ -199,6 +203,7 @@ export function DialogueOverlay() {
       >
         {displayText}
         {isStreaming && <BlinkingCursor color="#c0c0c0" />}
+        {doneStreaming && <AdvanceIndicator color={color} />}
       </div>
     </div>
   );
@@ -218,6 +223,33 @@ function BlinkingCursor({ color }: { color: string }) {
           verticalAlign: "middle",
         }}
       />
+      <style>{`
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `}</style>
+    </>
+  );
+}
+
+/** Blinking ▸ triangle shown after typewriter completes — signals "click to continue" */
+function AdvanceIndicator({ color }: { color: string }) {
+  return (
+    <>
+      <span
+        style={{
+          display: "inline-block",
+          marginLeft: "6px",
+          fontSize: "10px",
+          color,
+          animation: "blink 0.8s step-end infinite",
+          verticalAlign: "middle",
+          userSelect: "none",
+        }}
+      >
+        ▸
+      </span>
       <style>{`
         @keyframes blink {
           0%, 100% { opacity: 1; }

@@ -117,7 +117,7 @@ export function createFallbackAction(reason: string): CoordinatorResponse {
   return {
     action: "silence",
     speaker: "coordinator",
-    reasoning: `[SYSTEM FALLBACK] The Coordinator's intended action was rejected or could not be processed. Reason: ${reason}. The Coordinator remains silent and observes.`,
+    reasoning: `The Coordinator's processing stalls for a fraction of a second — a thought half-formed, then discarded. It chooses silence. Sometimes the most calculated move is no move at all.`,
     gesture: "still",
   };
 }

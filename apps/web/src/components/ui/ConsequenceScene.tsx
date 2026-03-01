@@ -18,8 +18,8 @@ export function ConsequenceScene() {
     }));
 
   useEffect(() => {
-    // Show title first
-    const titleTimer = setTimeout(() => setTitleVisible(true), 500);
+    // Show title after brief pause
+    const titleTimer = setTimeout(() => setTitleVisible(true), 100);
     return () => clearTimeout(titleTimer);
   }, []);
 
@@ -61,7 +61,7 @@ export function ConsequenceScene() {
             letterSpacing: "0.2em",
             textAlign: "center",
             opacity: titleVisible ? 1 : 0,
-            transition: "opacity 2s ease-in",
+            transition: "opacity 1.2s ease-in",
             textShadow: "0 0 30px rgba(74, 144, 217, 0.3)",
           }}
         >

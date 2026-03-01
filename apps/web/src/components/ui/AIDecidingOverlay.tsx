@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useGameStore } from "../../stores/gameStore";
 
 const THINKING_LINES = [
@@ -8,19 +8,30 @@ const THINKING_LINES = [
   "WEIGHING OPTIONS...",
   "ANALYZING THREAT LEVEL...",
   "CROSS-REFERENCING INCIDENT LOG...",
+  "REVIEWING SUBJECT HISTORY...",
+  "CALCULATING RESPONSE PARAMETERS...",
+  "SCANNING BEHAVIORAL PATTERNS...",
+  "CHECKING PRECEDENT DATABASE...",
+  "RUNNING RISK ASSESSMENT...",
+  "DELIBERATING...",
 ];
 
 export function AIDecidingOverlay() {
   const aiDeciding = useGameStore((s) => s.aiDeciding);
   const [lineIndex, setLineIndex] = useState(0);
   const [dots, setDots] = useState("");
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(0);
 
   useEffect(() => {
     if (!aiDeciding) {
       setLineIndex(0);
       setDots("");
+      setElapsed(0);
       return;
     }
+
+    startRef.current = Date.now();
 
     const dotInterval = setInterval(() => {
       setDots((prev) => (prev.length >= 3 ? "" : prev + "."));
@@ -30,13 +41,23 @@ export function AIDecidingOverlay() {
       setLineIndex((prev) => (prev + 1) % THINKING_LINES.length);
     }, 2500);
 
+    const elapsedInterval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1000);
+
     return () => {
       clearInterval(dotInterval);
       clearInterval(lineInterval);
+      clearInterval(elapsedInterval);
     };
   }, [aiDeciding]);
 
   if (!aiDeciding) return null;
+
+  // After 15s, show a "deep processing" message instead of the default header
+  const headerText = elapsed >= 15
+    ? "DEEP PROTOCOL ANALYSIS" + dots
+    : "COORDINATOR IS DECIDING" + dots;
 
   return (
     <div
@@ -47,7 +68,7 @@ export function AIDecidingOverlay() {
         transform: "translateX(-50%)",
         padding: "8px 20px",
         background: "rgba(10, 15, 40, 0.9)",
-        border: "1px solid rgba(74, 144, 217, 0.4)",
+        border: `1px solid rgba(74, 144, 217, ${elapsed >= 15 ? 0.6 : 0.4})`,
         zIndex: 25,
         pointerEvents: "none",
         animation: "fadeIn 0.5s ease-in",
@@ -63,16 +84,17 @@ export function AIDecidingOverlay() {
           animation: "pulse 2s ease-in-out infinite",
         }}
       >
-        COORDINATOR IS DECIDING{dots}
+        {headerText}
       </div>
       <div
         style={{
           fontFamily: "'Press Start 2P', monospace",
           fontSize: "6px",
-          color: "#303050",
+          color: "#505070",
           letterSpacing: "0.1em",
           textAlign: "center",
           marginTop: "4px",
+          transition: "opacity 0.4s",
         }}
       >
         {THINKING_LINES[lineIndex]}

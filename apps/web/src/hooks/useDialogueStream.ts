@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useGameStore } from "../stores/gameStore";
 
 interface DialogueEntry {
   speaker: string;
@@ -9,6 +10,8 @@ interface DialogueEntry {
 interface DialogueStreamState {
   displayText: string;
   isStreaming: boolean;
+  /** Typewriter finished — waiting for user click to advance */
+  doneStreaming: boolean;
   speaker: string | null;
   action: string | null;
 }
@@ -18,24 +21,16 @@ interface DialogueStreamControls extends DialogueStreamState {
   clearDialogue: () => void;
 }
 
-/**
- * Calculate how long a dialogue should stay visible after streaming completes.
- * Based on text length — short lines stay shorter, long lines stay longer.
- */
-function getHoldDuration(text: string): number {
-  const words = text.split(/\s+/).length;
-  // ~250ms per word, minimum 2.5s, maximum 8s
-  return Math.max(2500, Math.min(8000, words * 250));
-}
-
 export function useDialogueStream(): DialogueStreamControls {
   const [displayText, setDisplayText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [doneStreaming, setDoneStreaming] = useState(false);
   const [speaker, setSpeaker] = useState<string | null>(null);
   const [action, setAction] = useState<string | null>(null);
 
+  const setWaitingForClick = useGameStore((s) => s.setWaitingForClick);
+
   const charTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queueRef = useRef<DialogueEntry[]>([]);
   const isProcessingRef = useRef(false);
 
@@ -44,21 +39,19 @@ export function useDialogueStream(): DialogueStreamControls {
       clearTimeout(charTimerRef.current);
       charTimerRef.current = null;
     }
-    if (clearTimerRef.current !== null) {
-      clearTimeout(clearTimerRef.current);
-      clearTimerRef.current = null;
-    }
   }, []);
 
   const clearDialogue = useCallback(() => {
     stopAllTimers();
     setDisplayText("");
     setIsStreaming(false);
+    setDoneStreaming(false);
     setSpeaker(null);
     setAction(null);
     queueRef.current = [];
     isProcessingRef.current = false;
-  }, [stopAllTimers]);
+    setWaitingForClick(false);
+  }, [stopAllTimers, setWaitingForClick]);
 
   const processNext = useCallback(() => {
     if (queueRef.current.length === 0) {
@@ -74,9 +67,11 @@ export function useDialogueStream(): DialogueStreamControls {
     setAction(entry.action || null);
     setDisplayText("");
     setIsStreaming(true);
+    setDoneStreaming(false);
+    setWaitingForClick(false);
 
     let index = 0;
-    const charSpeed = 20; // ms per character — faster than before
+    const charSpeed = 20; // ms per character
 
     function showNextChar() {
       if (index < entry.text.length) {
@@ -84,21 +79,34 @@ export function useDialogueStream(): DialogueStreamControls {
         setDisplayText(entry.text.slice(0, index));
         charTimerRef.current = setTimeout(showNextChar, charSpeed);
       } else {
+        // Typewriter complete — signal waiting for click
         setIsStreaming(false);
-        const holdTime = getHoldDuration(entry.text);
-        clearTimerRef.current = setTimeout(() => {
-          // Fade out then process next
-          setDisplayText("");
-          setSpeaker(null);
-          setAction(null);
-          // Small gap between dialogues
-          setTimeout(() => processNext(), 300);
-        }, holdTime);
+        setDoneStreaming(true);
+        setWaitingForClick(true);
       }
     }
 
     charTimerRef.current = setTimeout(showNextChar, charSpeed);
-  }, [stopAllTimers]);
+  }, [stopAllTimers, setWaitingForClick]);
+
+  // Listen for advanceDialogue clicks — when waitingForClick goes from true to false
+  // while we have a finished dialogue showing, clear current and process next
+  const waitingForClick = useGameStore((s) => s.waitingForClick);
+  const prevWaitingRef = useRef(false);
+
+  useEffect(() => {
+    // Detect transition from waiting → not waiting (i.e., user clicked)
+    if (prevWaitingRef.current && !waitingForClick && doneStreaming) {
+      // Clear current dialogue
+      setDisplayText("");
+      setSpeaker(null);
+      setAction(null);
+      setDoneStreaming(false);
+      // Small gap then process next from internal queue
+      setTimeout(() => processNext(), 150);
+    }
+    prevWaitingRef.current = waitingForClick;
+  }, [waitingForClick, doneStreaming, processNext]);
 
   const streamDialogue = useCallback(
     (newSpeaker: string, fullText: string, newAction?: string) => {
@@ -121,5 +129,5 @@ export function useDialogueStream(): DialogueStreamControls {
     };
   }, [stopAllTimers]);
 
-  return { displayText, isStreaming, speaker, action, streamDialogue, clearDialogue };
+  return { displayText, isStreaming, doneStreaming, speaker, action, streamDialogue, clearDialogue };
 }

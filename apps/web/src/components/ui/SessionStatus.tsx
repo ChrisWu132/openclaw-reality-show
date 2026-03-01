@@ -15,10 +15,10 @@ export function SessionStatus() {
         key={i}
         style={{
           display: "inline-block",
-          width: "6px",
-          height: "6px",
+          width: "5px",
+          height: "5px",
           borderRadius: "50%",
-          margin: "0 2px",
+          margin: "0 1px",
           background: i < currentSituation
             ? "#4A90D9"
             : i === currentSituation
@@ -38,17 +38,17 @@ export function SessionStatus() {
         position: "absolute",
         bottom: "50px",
         right: "8px",
-        padding: "6px 10px",
-        background: "rgba(0, 0, 0, 0.7)",
-        border: "1px solid rgba(74, 144, 217, 0.15)",
+        padding: "4px 6px",
+        background: "rgba(0, 0, 0, 0.6)",
+        border: "1px solid rgba(74, 144, 217, 0.1)",
         fontFamily: "'Press Start 2P', monospace",
-        fontSize: "7px",
-        color: "#606070",
+        fontSize: "6px",
+        color: "#505060",
         zIndex: 10,
         display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        gap: "4px",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: "6px",
       }}
     >
       <div>CYCLE {currentSituation}/{totalSituations}</div>

@@ -1,5 +1,6 @@
 import { useGameStore } from "../../stores/gameStore";
 import { useWebSocket } from "../../hooks/useWebSocket";
+import { IntroScreen } from "../ui/IntroScreen";
 import { ScenarioPicker } from "../ui/ScenarioPicker";
 import { LoadingScreen } from "../ui/LoadingScreen";
 import { GameContainer } from "./GameContainer";
@@ -15,6 +16,9 @@ export function App() {
 
   let content;
   switch (phase) {
+    case "intro":
+      content = <IntroScreen />;
+      break;
     case "picker":
       content = <ScenarioPicker />;
       break;
@@ -28,7 +32,7 @@ export function App() {
       content = <ConsequenceScene />;
       break;
     default:
-      content = <ScenarioPicker />;
+      content = <IntroScreen />;
   }
 
   return (

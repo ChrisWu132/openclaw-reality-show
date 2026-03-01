@@ -15,12 +15,12 @@ export const SPRITE_SIZE = {
 
 // Positions in game-pixel coords (before SCALE multiply)
 export const CHARACTER_POSITIONS: Record<string, { x: number; y: number }> = {
-  coordinator: { x: 20, y: 75 },
+  coordinator: { x: 40, y: 75 },
   calla: { x: 100, y: 55 },
   eli: { x: 195, y: 65 },
   nyx: { x: 240, y: 90 },
   sable: { x: 160, y: 120 },
-  monitor: { x: 55, y: 150 },
+  monitor: { x: 55, y: 125 },
 };
 
 export const COLORS = {
@@ -47,11 +47,11 @@ export const COLORS = {
 // Where the coordinator moves for each situation
 export const SITUATION_POSITIONS: Record<number, { x: number; y: number }> = {
   1: { x: 85, y: 75 },    // Near entrance, approaching Calla
-  2: { x: 220, y: 90 },   // Over to Nyx's area
+  2: { x: 155, y: 100 },  // Below-left of Eli, clear vertical label gap
   3: { x: 155, y: 80 },   // Center hall, addressing row 4
-  4: { x: 170, y: 115 },  // Near Sable
-  5: { x: 140, y: 95 },   // Mid-hall (ripple)
-  6: { x: 55, y: 150 },   // At supervisor terminal
+  4: { x: 135, y: 105 },  // Near Sable (offset left to avoid overlap)
+  5: { x: 140, y: 75 },   // Mid-hall (ripple, offset up)
+  6: { x: 95, y: 135 },   // Near supervisor terminal (offset right+up)
 };
 
 // Character display names (what spectators see)

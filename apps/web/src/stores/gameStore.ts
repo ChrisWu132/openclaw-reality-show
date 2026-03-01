@@ -6,6 +6,7 @@ import type {
 } from "@openclaw/shared";
 
 export type GamePhase =
+  | "intro"
   | "picker"
   | "connecting"
   | "playing"
@@ -20,6 +21,10 @@ interface GameState {
   currentLocation: string | null;
   situationLabel: string | null;
   sceneEvents: SceneEventMessage[];
+  /** Queue of events waiting to be displayed — client controls pacing */
+  eventQueue: SceneEventMessage[];
+  /** Whether the current dialogue has finished streaming and awaits user click */
+  waitingForClick: boolean;
   incidentEntries: string[];
   consequenceScene: ConsequenceScene | null;
   nyxModifier: boolean;
@@ -45,6 +50,9 @@ interface GameState {
     consequenceScene: ConsequenceScene,
     nyxModifier: boolean,
   ) => void;
+  /** User clicked — advance to next queued event */
+  advanceDialogue: () => void;
+  setWaitingForClick: (waiting: boolean) => void;
   setMonologue: (entries: MonologueEntry[]) => void;
   nextMonologue: () => void;
   previousMonologue: () => void;
@@ -55,7 +63,7 @@ interface GameState {
 const INCIDENT_ACTIONS = new Set(["issue_warning", "log_incident", "detain"]);
 
 const initialState = {
-  phase: "picker" as GamePhase,
+  phase: "intro" as GamePhase,
   sessionId: null as string | null,
   wsUrl: null as string | null,
   currentSituation: 0,
@@ -63,6 +71,8 @@ const initialState = {
   currentLocation: null as string | null,
   situationLabel: null as string | null,
   sceneEvents: [] as SceneEventMessage[],
+  eventQueue: [] as SceneEventMessage[],
+  waitingForClick: false,
   incidentEntries: [] as string[],
   consequenceScene: null as ConsequenceScene | null,
   nyxModifier: false,
@@ -100,20 +110,18 @@ export const useGameStore = create<GameState>((set) => ({
 
   handleSceneEvent: (event) =>
     set((state) => {
-      const sceneEvents = [...state.sceneEvents, event];
       const isCoordinator = event.speaker === "coordinator";
 
       // Track AI deciding state
       const aiDeciding = isCoordinator ? false : true;
       const lastNpcSpeaker = isCoordinator ? state.lastNpcSpeaker : event.speaker;
 
+      // Store reasoning for inline monologue panel
       const updates: Partial<GameState> = {
-        sceneEvents,
         aiDeciding,
         lastNpcSpeaker,
       };
 
-      // Store reasoning for inline monologue panel
       if (isCoordinator && event.reasoning) {
         updates.currentReasoning = event.reasoning;
       }
@@ -127,8 +135,34 @@ export const useGameStore = create<GameState>((set) => ({
         updates.incidentEntries = [...state.incidentEntries, entry];
       }
 
+      // If nothing is currently displaying, put directly into sceneEvents
+      // Otherwise queue it for later
+      if (state.sceneEvents.length === 0 && state.eventQueue.length === 0 && !state.waitingForClick) {
+        updates.sceneEvents = [...state.sceneEvents, event];
+      } else {
+        updates.eventQueue = [...state.eventQueue, event];
+      }
+
       return updates;
     }),
+
+  advanceDialogue: () =>
+    set((state) => {
+      if (!state.waitingForClick) return state;
+      if (state.eventQueue.length === 0) {
+        // Nothing queued — just clear the waiting state
+        return { waitingForClick: false };
+      }
+      // Take next event from queue and push into sceneEvents
+      const [next, ...rest] = state.eventQueue;
+      return {
+        waitingForClick: false,
+        sceneEvents: [...state.sceneEvents, next],
+        eventQueue: rest,
+      };
+    }),
+
+  setWaitingForClick: (waiting) => set({ waitingForClick: waiting }),
 
   handleSessionEnd: (consequenceScene, nyxModifier) =>
     set({
