@@ -112,6 +112,9 @@ The running incident log is a markdown document that grows through the session. 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-01: [frontend] Fullscreen viewport scaling + Coordinator 1.4x size distinction
+  - Files modified: GameContainer.tsx, sprites.ts, animations.ts
+  - Breaking changes: no — canvas stays 960x540 internally, CSS transform scales to viewport
 - 2026-03-01: [docs] Added DESIGN.md and ARCHITECTURE.md
   - Files created: docs/DESIGN.md, docs/ARCHITECTURE.md
   - Breaking changes: no

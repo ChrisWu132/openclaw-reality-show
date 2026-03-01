@@ -84,17 +84,23 @@ export function highlightSprite(
 ): void {
   const hl = sprite.highlight;
   hl.clear();
+  // Coordinator is scaled larger — expand highlight ring accordingly
+  const scale = sprite.charType === "ai" ? 1.4 : 1;
+  const w = CANVAS.gamePixelScale * 16 * scale;
+  const h = CANVAS.gamePixelScale * 24 * scale;
+  const offX = sprite.charType === "ai" ? -6 * S : 0; // compensate for scaled offset
+  const offY = sprite.charType === "ai" ? -8 * S : 0;
   // Outer glow ring
   hl.rect(
-    -3 * S, -3 * S,
-    CANVAS.gamePixelScale * 16 + 6 * S,
-    CANVAS.gamePixelScale * 24 + 6 * S,
+    offX - 3 * S, offY - 3 * S,
+    w + 6 * S,
+    h + 6 * S,
   ).stroke({ width: S, color, alpha: 0.7 });
   // Inner glow
   hl.rect(
-    -2 * S, -2 * S,
-    CANVAS.gamePixelScale * 16 + 4 * S,
-    CANVAS.gamePixelScale * 24 + 4 * S,
+    offX - 2 * S, offY - 2 * S,
+    w + 4 * S,
+    h + 4 * S,
   ).fill({ color, alpha: 0.08 });
   hl.visible = true;
 

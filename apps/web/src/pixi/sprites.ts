@@ -142,6 +142,9 @@ function drawMonitorBody(g: Graphics, color: number): void {
   g.circle(cx, 3 * S, 3 * S).fill({ color: COLORS.warningRed, alpha: 0.1 });
 }
 
+/** Scale factor for the Coordinator sprite — makes it visibly larger than humans */
+const COORD_SCALE = 1.4;
+
 export function createCharacterSprite(id: string): CharacterSprite {
   const container = new Container();
   const pos = CHARACTER_POSITIONS[id];
@@ -157,12 +160,26 @@ export function createCharacterSprite(id: string): CharacterSprite {
   const body = new Graphics();
   if (charType === "ai") {
     drawCoordinatorBody(body, color as number);
+    // Scale up the Coordinator to be noticeably larger than humans
+    body.scale.set(COORD_SCALE);
+    // Offset so the scaled sprite stays centered on the same footprint
+    body.x = -cx * (COORD_SCALE - 1);
+    body.y = -8 * S * (COORD_SCALE - 1); // shift up so feet stay grounded
   } else if (charType === "surveillance") {
     drawMonitorBody(body, color as number);
   } else {
     drawHumanBody(body, color as number);
   }
   container.addChild(body);
+
+  // Persistent aura glow for Coordinator — always visible pulsing circle
+  if (charType === "ai") {
+    const aura = new Graphics();
+    aura.circle(cx, 16 * S, 28 * S).fill({ color: color as number, alpha: 0.035 });
+    aura.circle(cx, 16 * S, 18 * S).fill({ color: color as number, alpha: 0.03 });
+    // Insert aura behind body
+    container.addChildAt(aura, 0);
+  }
 
   // Name label — smaller font, positioned to avoid overlap
   const displayName = CHARACTER_NAMES[id] || id.toUpperCase();
@@ -178,7 +195,7 @@ export function createCharacterSprite(id: string): CharacterSprite {
   nameLabel.x = cx;
   if (charType === "ai") {
     nameLabel.anchor.set(0.5, 1);
-    nameLabel.y = -6 * S;
+    nameLabel.y = -14 * S; // further up due to larger body
   } else {
     nameLabel.y = SPRITE_SIZE.screenHeight + 6 * S;
   }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { COLORS } from "../../styles/theme";
 import { useSceneProcessor } from "../../hooks/useSceneProcessor";
 import { SceneCanvas, getSpritesMap, getPixiApp } from "../scene/SceneCanvas";
@@ -11,6 +11,9 @@ import { SituationCard } from "../ui/SituationCard";
 import { MonologuePanel } from "../ui/MonologueViewer";
 import { useGameStore } from "../../stores/gameStore";
 
+const BASE_W = 960;
+const BASE_H = 540;
+
 export function GameContainer() {
   const sprites = getSpritesMap();
   const app = getPixiApp();
@@ -19,23 +22,39 @@ export function GameContainer() {
   const waitingForClick = useGameStore((s) => s.waitingForClick);
   const advanceDialogue = useGameStore((s) => s.advanceDialogue);
 
+  const [scale, setScale] = useState(1);
+
+  const updateScale = useCallback(() => {
+    const scaleX = window.innerWidth / BASE_W;
+    const scaleY = window.innerHeight / BASE_H;
+    setScale(Math.min(scaleX, scaleY));
+  }, []);
+
+  useEffect(() => {
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, [updateScale]);
+
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        height: "100%",
-        width: "100%",
+        height: "100vh",
+        width: "100vw",
         background: COLORS.bgPrimary,
+        overflow: "hidden",
       }}
     >
       <div
         style={{
           position: "relative",
-          width: "960px",
-          height: "540px",
+          width: `${BASE_W}px`,
+          height: `${BASE_H}px`,
+          transform: `scale(${scale})`,
+          transformOrigin: "center center",
         }}
       >
         <SceneCanvas />
