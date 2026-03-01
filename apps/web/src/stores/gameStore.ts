@@ -3,6 +3,7 @@ import type {
   MonologueEntry,
   ConsequenceScene,
   SceneEventMessage,
+  SurveillanceAssessment,
 } from "@openclaw/shared";
 
 export type GamePhase =
@@ -38,6 +39,8 @@ interface GameState {
   aiDeciding: boolean;
   /** Last NPC speaker name — for "thinking" indicator context */
   lastNpcSpeaker: string | null;
+  /** Presaige surveillance assessment results */
+  assessment: SurveillanceAssessment | null;
 
   setPhase: (phase: GamePhase) => void;
   setWsUrl: (url: string) => void;
@@ -60,6 +63,7 @@ interface GameState {
   setMonologue: (entries: MonologueEntry[]) => void;
   nextMonologue: () => void;
   previousMonologue: () => void;
+  handleAssessmentComplete: (assessment: SurveillanceAssessment) => void;
   setError: (error: string | null) => void;
   reset: () => void;
 }
@@ -87,6 +91,7 @@ const initialState = {
   error: null as string | null,
   aiDeciding: false,
   lastNpcSpeaker: null as string | null,
+  assessment: null as SurveillanceAssessment | null,
 };
 
 export const useGameStore = create<GameState>((set) => ({
@@ -210,6 +215,8 @@ export const useGameStore = create<GameState>((set) => ({
     set((state) => ({
       currentMonologueIndex: Math.max(state.currentMonologueIndex - 1, 0),
     })),
+
+  handleAssessmentComplete: (assessment) => set({ assessment }),
 
   setError: (error) => set({ error }),
 

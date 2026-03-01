@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useGameStore } from "../../stores/gameStore";
+import { AssessmentPanel } from "./AssessmentPanel";
 
 const EPILOGUE_LINES: Record<string, string> = {
   "The Processing Suite": "Sable will remember. That is the point.",
@@ -9,6 +10,8 @@ const EPILOGUE_LINES: Record<string, string> = {
 
 export function ConsequenceScene() {
   const consequenceScene = useGameStore((s) => s.consequenceScene);
+  const assessment = useGameStore((s) => s.assessment);
+  const sessionId = useGameStore((s) => s.sessionId);
   const reset = useGameStore((s) => s.reset);
   const [visibleLines, setVisibleLines] = useState(0);
   const [showDivider, setShowDivider] = useState(false);
@@ -16,6 +19,7 @@ export function ConsequenceScene() {
   const [showButton, setShowButton] = useState(false);
   const [titleVisible, setTitleVisible] = useState(false);
   const [bgProgress, setBgProgress] = useState(0);
+  const assessmentRequested = useRef(false);
 
   if (!consequenceScene) return null;
 
@@ -32,6 +36,33 @@ export function ConsequenceScene() {
     const titleTimer = setTimeout(() => setTitleVisible(true), 100);
     return () => clearTimeout(titleTimer);
   }, []);
+
+  // Capture canvas screenshot and POST to assessment endpoint
+  useEffect(() => {
+    if (!titleVisible || assessmentRequested.current || !sessionId) return;
+    assessmentRequested.current = true;
+
+    requestAnimationFrame(() => {
+      const canvas = document.querySelector("canvas") as HTMLCanvasElement | null;
+      if (!canvas) return;
+
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          fetch(`/api/session/${sessionId}/assess`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ screenshot: dataUrl }),
+          }).catch(() => {
+            // Silent failure — assessment is additive
+          });
+        };
+        reader.readAsDataURL(blob);
+      }, "image/png");
+    });
+  }, [titleVisible, sessionId]);
 
   // Progressive background darkening as lines appear
   useEffect(() => {
@@ -69,12 +100,12 @@ export function ConsequenceScene() {
     return () => clearTimeout(timer);
   }, [showDivider, showEpilogue, epilogue]);
 
-  // Button shown → 5s → auto-dismiss back to picker
+  // Button shown → 5s → auto-dismiss back to picker (disabled while assessment is showing)
   useEffect(() => {
-    if (!showButton) return;
+    if (!showButton || assessment) return;
     const timer = setTimeout(() => reset(), 5000);
     return () => clearTimeout(timer);
-  }, [showButton, reset]);
+  }, [showButton, reset, assessment]);
 
   // Background: starts 40% opaque, ends 90% opaque
   const bgOpacity = 0.65 + bgProgress * 0.3;
@@ -194,6 +225,9 @@ export function ConsequenceScene() {
             </button>
           </div>
         )}
+
+        {/* Surveillance Assessment from Presaige */}
+        {assessment && <AssessmentPanel assessment={assessment} />}
       </div>
     </div>
   );

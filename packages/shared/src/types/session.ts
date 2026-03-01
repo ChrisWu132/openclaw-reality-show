@@ -1,7 +1,7 @@
 import type { WorldState } from "./world-state";
 import type { IncidentLogEntry } from "./incident-log";
 import type { MonologueEntry } from "./monologue";
-import type { SableSignal } from "./ws-events";
+import type { SableSignal, SurveillanceAssessment } from "./ws-events";
 
 export type ScenarioId = "work-halls";
 export type SessionStatus = "created" | "running" | "ended" | "monologue";
@@ -22,4 +22,5 @@ export interface Session {
   agentMemory?: string;
   sableSignal: SableSignal | null;
   nyxSignal: boolean | null;
+  assessment?: SurveillanceAssessment | null;
 }

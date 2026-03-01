@@ -8,6 +8,7 @@ import { initLLMClient } from "./ai/llm-client.js";
 import { sessionRouter } from "./routes/session.js";
 import { scenariosRouter } from "./routes/scenarios.js";
 import { agentRouter } from "./routes/agent.js";
+import { assessmentRouter } from "./routes/assessment.js";
 import { setupWebSocketServer } from "./ws/ws-server.js";
 import { createLogger } from "./utils/logger.js";
 import { sessions } from "./engine/state-manager.js";
@@ -31,12 +32,13 @@ async function startServer(): Promise<void> {
   const app = express();
   const server = createServer(app);
 
-  app.use(express.json());
+  app.use(express.json({ limit: "10mb" }));
 
   // REST API routes
   app.use("/api", sessionRouter);
   app.use("/api", scenariosRouter);
   app.use("/api", agentRouter);
+  app.use("/api", assessmentRouter);
 
   // Health check
   app.get("/api/health", (_req, res) => {

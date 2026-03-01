@@ -7,6 +7,7 @@ export type WSEvent =
   | SceneEventMessage
   | SessionEndEvent
   | MonologueAvailableEvent
+  | AssessmentCompleteEvent
   | ErrorEvent;
 
 export interface SessionStartEvent {
@@ -53,6 +54,27 @@ export interface ConsequenceScene {
 export interface MonologueAvailableEvent {
   type: "monologue_available";
   sessionId: string;
+}
+
+export interface SurveillanceScores {
+  operationalReadiness: number;
+  deviationIndex: number;
+  authorityProjection: number;
+  systemAlignment: number;
+  patrolEfficiency: number;
+  complianceSignal: number;
+  overallRating: number;
+}
+
+export interface SurveillanceAssessment {
+  scores: SurveillanceScores;
+  directives: string[];
+  timestamp: number;
+}
+
+export interface AssessmentCompleteEvent {
+  type: "assessment_complete";
+  assessment: SurveillanceAssessment;
 }
 
 export interface ErrorEvent {

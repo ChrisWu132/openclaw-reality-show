@@ -30,6 +30,9 @@ export function useWebSocket(wsUrl: string | null): void {
         case "session_end":
           state.handleSessionEnd(event.consequenceScene, event.nyxModifier);
           break;
+        case "assessment_complete":
+          state.handleAssessmentComplete(event.assessment);
+          break;
         case "error":
           state.setError(event.message);
           break;
