@@ -34,6 +34,8 @@ export interface SceneEventMessage {
   gesture?: string;
   dialogue?: string;
   reasoning?: string;
+  /** Relative URL path to pre-generated audio for this dialogue, e.g. "/audio/abc123.mp3" */
+  audioUrl?: string;
 }
 
 export interface SessionEndEvent {

@@ -5,6 +5,7 @@ interface DialogueEntry {
   speaker: string;
   text: string;
   action?: string;
+  audioUrl?: string;
 }
 
 interface DialogueStreamState {
@@ -17,7 +18,7 @@ interface DialogueStreamState {
 }
 
 interface DialogueStreamControls extends DialogueStreamState {
-  streamDialogue: (speaker: string, fullText: string, action?: string) => void;
+  streamDialogue: (speaker: string, fullText: string, action?: string, audioUrl?: string) => void;
   clearDialogue: () => void;
 }
 
@@ -70,8 +71,18 @@ export function useDialogueStream(): DialogueStreamControls {
     setDoneStreaming(false);
     setWaitingForClick(false);
 
+    // When voice audio is present, reveal text instantly so the user can read
+    // along while the audio plays. The voice IS the pacing — no typewriter needed.
+    if (entry.audioUrl) {
+      setDisplayText(entry.text);
+      setIsStreaming(false);
+      setDoneStreaming(true);
+      setWaitingForClick(true);
+      return;
+    }
+
     let index = 0;
-    const charSpeed = 20; // ms per character
+    const charSpeed = 20; // ms per character (fallback when no audio)
 
     function showNextChar() {
       if (index < entry.text.length) {
@@ -109,11 +120,12 @@ export function useDialogueStream(): DialogueStreamControls {
   }, [waitingForClick, doneStreaming, processNext]);
 
   const streamDialogue = useCallback(
-    (newSpeaker: string, fullText: string, newAction?: string) => {
+    (newSpeaker: string, fullText: string, newAction?: string, newAudioUrl?: string) => {
       queueRef.current.push({
         speaker: newSpeaker,
         text: fullText,
         action: newAction,
+        audioUrl: newAudioUrl,
       });
 
       if (!isProcessingRef.current) {

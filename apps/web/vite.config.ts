@@ -7,6 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": "http://localhost:3001",
+      "/audio": "http://localhost:3001",
       "/session": {
         target: "ws://localhost:3001",
         ws: true,

@@ -40,7 +40,7 @@ export function ScenarioPicker() {
           textShadow: "0 0 20px rgba(74, 144, 217, 0.3)",
         }}
       >
-        OPENCLAW
+        CLAWTV
       </div>
       <div
         style={{

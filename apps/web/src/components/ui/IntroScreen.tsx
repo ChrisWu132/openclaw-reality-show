@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useGameStore } from "../../stores/gameStore";
 import { COLORS } from "../../styles/theme";
 
@@ -9,6 +9,8 @@ interface IntroScreenProps {
 export function IntroScreen({ onFirstInteraction }: IntroScreenProps) {
   const setPhase = useGameStore((s) => s.setPhase);
   const [step, setStep] = useState(0);
+  const introAudioRef = useRef<HTMLAudioElement | null>(null);
+  const introPlayedRef = useRef(false);
 
   useEffect(() => {
     const timers = [
@@ -18,12 +20,34 @@ export function IntroScreen({ onFirstInteraction }: IntroScreenProps) {
       setTimeout(() => setStep(4), 5500),
       setTimeout(() => setStep(5), 7000),
     ];
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      timers.forEach(clearTimeout);
+      // Stop intro audio if screen unmounts before it finishes
+      if (introAudioRef.current) {
+        introAudioRef.current.pause();
+        introAudioRef.current = null;
+      }
+    };
   }, []);
+
+  const handleInteraction = () => {
+    onFirstInteraction?.();
+    // Play intro narrator audio on first interaction (after browser unlocks autoplay)
+    if (!introPlayedRef.current) {
+      introPlayedRef.current = true;
+      const audio = new Audio("/audio/intro.mp3");
+      audio.volume = 0.8;
+      introAudioRef.current = audio;
+      // Small delay so it begins after the music starts
+      setTimeout(() => {
+        audio.play().catch(() => {});
+      }, 800);
+    }
+  };
 
   return (
     <div
-      onClick={onFirstInteraction}
+      onClick={handleInteraction}
       style={{
         display: "flex",
         flexDirection: "column",

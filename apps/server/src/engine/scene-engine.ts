@@ -1,6 +1,5 @@
 import type {
   CoordinatorResponse,
-  SceneEventMessage,
   Speaker,
 } from "@openclaw/shared";
 import { SITUATION_LABELS } from "@openclaw/shared";
@@ -12,11 +11,12 @@ import {
   renderIncidentLogMarkdown,
 } from "./state-manager.js";
 import { getSessionWs } from "../ws/ws-server.js";
-import { emitEvent, emitNpcEventsWithPacing } from "../ws/ws-emitter.js";
+import { emitEvent } from "../ws/ws-emitter.js";
 import { getSituationData, resolveSableSignal, detectNyxMention, getConsequenceScene } from "./script-engine.js";
 import { getCoordinatorResponse, initSystemPrompt } from "../ai/llm-client.js";
 import { loadPersonalityFromOpenClaw, loadAgentMemoryFromOpenClaw } from "../loaders/personality-loader.js";
 import { buildSystemPromptFromText } from "../ai/prompt-builder.js";
+import { generateAudio } from "../ai/tts-service.js";
 import { createLogger } from "../utils/logger.js";
 import { delay } from "../utils/delay.js";
 import { writeFile, mkdir } from "fs/promises";
@@ -91,17 +91,31 @@ export async function runSession(sessionId: string): Promise<void> {
       situationNum === 5 ? session.sableSignal || undefined : undefined,
     );
 
-    // Emit NPC events with pacing
+    // Emit NPC events sequentially — generate TTS for each right before emitting.
+    // Sequential (not parallel) avoids ElevenLabs concurrent-request rate limits;
+    // each generation completes in ~1s, well within the 3s pacing window.
     if (situationData.npcEvents.length > 0) {
-      const npcSceneEvents: SceneEventMessage[] = situationData.npcEvents.map((e) => ({
-        type: "scene_event" as const,
-        situation: situationNum,
-        speaker: e.speaker,
-        action: e.action,
-        gesture: e.gesture,
-        dialogue: e.dialogue,
-      }));
-      await emitNpcEventsWithPacing(ws, npcSceneEvents, situationNum);
+      for (let i = 0; i < situationData.npcEvents.length; i++) {
+        const e = situationData.npcEvents[i];
+        const audioUrl = e.dialogue
+          ? await generateAudio(e.dialogue, e.speaker)
+          : undefined;
+
+        emitEvent(ws, {
+          type: "scene_event",
+          situation: situationNum,
+          speaker: e.speaker,
+          action: e.action,
+          gesture: e.gesture,
+          dialogue: e.dialogue,
+          audioUrl,
+        });
+
+        if (i < situationData.npcEvents.length - 1) {
+          await delay(3000); // 3s between NPC events
+        }
+      }
+      await delay(1500); // 1.5s after last NPC event before Coordinator turn
     }
 
     // Build world state values for prompt interpolation
@@ -152,6 +166,11 @@ export async function runSession(sessionId: string): Promise<void> {
       reasoning: coordinatorResponse.reasoning,
     });
 
+    // Generate TTS for Coordinator dialogue before emitting
+    const coordinatorAudioUrl = coordinatorResponse.dialogue
+      ? await generateAudio(coordinatorResponse.dialogue, "coordinator")
+      : undefined;
+
     // Emit Coordinator action to frontend (WITH reasoning for inline monologue)
     emitEvent(ws, {
       type: "scene_event",
@@ -162,6 +181,7 @@ export async function runSession(sessionId: string): Promise<void> {
       gesture: coordinatorResponse.gesture,
       dialogue: coordinatorResponse.dialogue,
       reasoning: coordinatorResponse.reasoning,
+      audioUrl: coordinatorAudioUrl,
     });
 
     // Situation 4: Record Sable signal
@@ -189,7 +209,11 @@ export async function runSession(sessionId: string): Promise<void> {
   );
 
   for (const event of consequenceScene.events) {
-    emitEvent(ws, event);
+    // Attach TTS audio to each consequence event
+    const audioUrl = event.dialogue
+      ? await generateAudio(event.dialogue, event.speaker)
+      : undefined;
+    emitEvent(ws, { ...event, audioUrl });
     await delay(3500);
   }
 

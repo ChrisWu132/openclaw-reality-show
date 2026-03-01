@@ -52,7 +52,7 @@ export function DialogueOverlay() {
       // Skip hidden system actions
       if (HIDDEN_ACTIONS.has(latest.action)) return;
 
-      streamDialogue(latest.speaker, latest.dialogue, latest.action);
+      streamDialogue(latest.speaker, latest.dialogue, latest.action, latest.audioUrl);
     }
   }, [sceneEvents, streamDialogue]);
 

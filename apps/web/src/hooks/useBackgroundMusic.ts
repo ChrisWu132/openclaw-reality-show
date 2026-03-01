@@ -23,20 +23,33 @@ export function useBackgroundMusic(): {
     }
     const audio       = new Audio(MUSIC_SRC);
     audio.loop        = true;
+    audio.volume      = 0.2;
     audio.muted       = isMutedRef.current;
     audioRef.current  = audio;
     audio.play().catch(() => {});
   }, []);
 
+  // Attempt autoplay on mount; fall back to first-interaction if browser blocks it
   useEffect(() => {
-    const events = ["click", "keydown", "pointerdown"] as const;
-    const handle = () => {
-      triggerStart();
-      events.forEach((e) => document.removeEventListener(e, handle));
-    };
-    events.forEach((e) => document.addEventListener(e, handle));
-    return () => events.forEach((e) => document.removeEventListener(e, handle));
-  }, [triggerStart]);
+    const audio      = new Audio(MUSIC_SRC);
+    audio.loop       = true;
+    audio.volume     = 0.2;
+    audio.muted      = isMutedRef.current;
+    audioRef.current = audio;
+
+    audio.play().catch(() => {
+      // Autoplay blocked — wait for first user interaction
+      const events = ["click", "keydown", "pointerdown"] as const;
+      const handle = () => {
+        if (audioRef.current && !isMutedRef.current) {
+          audioRef.current.play().catch(() => {});
+        }
+        events.forEach((e) => document.removeEventListener(e, handle));
+      };
+      events.forEach((e) => document.addEventListener(e, handle));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     return () => { audioRef.current?.pause(); };

@@ -10,6 +10,7 @@ import { scenariosRouter } from "./routes/scenarios.js";
 import { agentRouter } from "./routes/agent.js";
 import { assessmentRouter } from "./routes/assessment.js";
 import { setupWebSocketServer } from "./ws/ws-server.js";
+import { initAudioCacheDir, generateIntroAudio, AUDIO_CACHE_DIR } from "./ai/tts-service.js";
 import { createLogger } from "./utils/logger.js";
 import { sessions } from "./engine/state-manager.js";
 
@@ -28,11 +29,25 @@ async function startServer(): Promise<void> {
     logger.warn("GOOGLE_API_KEY not set — server will start but LLM calls will fail. Set it in .env");
   }
 
+  // Initialize TTS audio cache directory + pre-generate fixed clips
+  await initAudioCacheDir();
+  if (!process.env.ELEVENLABS_API_KEY) {
+    logger.warn("ELEVENLABS_API_KEY not set — voice narration disabled. Set it in .env to enable.");
+  } else {
+    // Pre-generate intro screen audio in the background — don't block server start
+    generateIntroAudio().catch((err) => {
+      logger.warn("Intro audio generation failed (non-fatal)", { error: err.message });
+    });
+  }
+
   // Create Express app
   const app = express();
   const server = createServer(app);
 
   app.use(express.json({ limit: "10mb" }));
+
+  // Serve generated TTS audio files
+  app.use("/audio", express.static(AUDIO_CACHE_DIR));
 
   // REST API routes
   app.use("/api", sessionRouter);
