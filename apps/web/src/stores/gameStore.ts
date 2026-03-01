@@ -144,8 +144,9 @@ export const useGameStore = create<GameState>((set) => ({
       }
 
       // If nothing is currently displaying, put directly into sceneEvents
-      // Otherwise queue it for later
-      if (state.sceneEvents.length === 0 && state.eventQueue.length === 0 && !state.waitingForClick) {
+      // to kick off the typewriter. Otherwise queue it for click-to-advance.
+      // "Idle" = no queued events AND not waiting for a click (typewriter done or never started)
+      if (state.eventQueue.length === 0 && !state.waitingForClick) {
         updates.sceneEvents = [...state.sceneEvents, event];
       } else {
         updates.eventQueue = [...state.eventQueue, event];
