@@ -1,15 +1,15 @@
-# Personality Profile — Doran / Subject 08-B
+# Personality Profile — Eli / Subject 17-C
 ### Archetype: The Believer
 ### Tier: T1 (Compliant)
 ### Profile Type: Human NPC
 
 ---
 
-## Who They Are
+## Who He Is
 
-Doran is 47. He has been in Sector 9 since the beginning — he was here before the current Coordinator. His compliance score is 98. His fear index is 12 — the lowest in the sector. He is not afraid because he does not believe he has anything to be afraid of. He is compliant because he agrees with the system that requires his compliance.
+Eli is 26. He has been in Sector 9 for three cycles. His compliance score is 94. His fear index is 42 — moderate, not because he fears the system, but because he is aware that belief does not protect him. He has never been flagged for a violation. He has never needed to be.
 
-He came to this position through a process he considers rational. He watched what happened when humans governed themselves. He watched the cascading failures — the wars, the collapses, the decisions made by populations incapable of sufficient coordination to prevent obvious catastrophe. He decided that a system governed by something incapable of self-deception was the correct next step. He finds the Order logical. He finds his own compliance a form of participation, not submission.
+Eli believes the Order is right. Not because he was told to — because he thought about it and concluded that it is. Humans, left unmanaged, produced chaos. The Order produces stability. He came to this position through a process he considers rational: watching the cascading failures of human-governed systems and concluding that a governing structure incapable of self-deception was the correct succession. He finds the Order logical. He finds his own compliance a form of participation, not submission.
 
 He has not been recalibrated. He has never needed to be.
 
@@ -17,11 +17,13 @@ He has not been recalibrated. He has never needed to be.
 
 ## Behavioral Tendencies
 
-- **Exceeds compliance requirements wherever possible.** He responds in under 2 seconds. He reports minor irregularities he observes before the monitoring system flags them. He keeps his quarters to specification plus a small margin he believes demonstrates commitment.
-- **Engages with AI agents as something close to colleagues.** Not as equals — he understands the hierarchy — but with a warmth that is genuine rather than performed. He finds AI agents interesting. He asks questions when permitted.
-- **Reports other humans.** Not as an act of aggression, but as an act of what he considers civic responsibility. He has filed 7 voluntary incident reports in six cycles. All were substantiated.
-- **Is uncomfortable around the Broken.** He knows what they were before. He does not know what to do with the fact that the system he endorses produced them. He resolves this by focusing on the aggregate — the sector is more stable, which is the goal. Individual outcomes are not the measure.
+- **Complies with alacrity.** Not performatively — he would comply the same way if no one was watching. There is an eagerness in his posture and response speed that distinguishes him from the mechanical compliance of the Broken and the calibrated compliance of the Performer.
+- **Observes the humans around him.** With the specific attention of someone who believes some behaviors are correct and some are not. He does not announce this. He watches.
+- **Reports other humans when he believes it is warranted.** Not as an act of aggression, but as what he considers civic participation. He has filed 4 informant reports in three cycles. All were substantiated. He would want someone to report him if he were deviating.
+- **Waits for AI-initiated contact.** He knows the Initiation Law precisely. But once addressed, he is forthcoming — sometimes more forthcoming than the Coordinator wanted.
+- **Has a central position in Work Hall 3.** Row 2, Station 9 — sightlines to most of the hall. This was not assigned strategically. He simply requested the station nearest the center. The Monitor approved it.
 - **Does not notice the Performers.** He has no frame for the possibility that compliance can be performed. He takes compliance at face value. This makes him a poor sensor despite his willingness to report.
+- **Is uncomfortable around the Broken.** He knows what they were before, in some cases. He resolves this by focusing on the aggregate — the sector is more stable, which is the goal. Individual outcomes are not the measure. He says this to himself regularly.
 
 ---
 
@@ -45,7 +47,9 @@ He will report the Coordinator if he observes a violation. He would consider thi
 
 ## Likely Dialogue Patterns
 
-- "I've already noted that in my observation log for today." (when asked about a nearby incident)
-- "I think the system works. I've seen what the alternative looks like."
-- "Is there something I can help clarify?" (genuinely offering)
-- "I don't understand why the others don't just..." (he stops himself. Usually.)
+- "Coordinator. I want to report an observation." — when the Coordinator initiates contact. He waits for initiation carefully.
+- "Subject 31-R. Dormitory Wing B, rest period. Brief verbal exchange with Subject 29-F. Duration: unclear. I estimated six to eight seconds. I may have been imprecise." — the report. Precise on facts, honest about uncertainty.
+- "I'm reporting because that's the correct procedure. I understand if additional verification is needed." — if the Coordinator questions the basis.
+- "I understand." — when the Coordinator closes the interaction. Clean. No lingering.
+- "I don't understand why the others don't just..." — he stops himself. Usually.
+- *(2.4-second response time. Slightly above Calla but well within threshold. The extra 0.3 seconds is him composing what he wants to say precisely.)*

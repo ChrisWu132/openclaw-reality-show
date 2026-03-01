@@ -1,17 +1,17 @@
-# Personality Profile — Calla / Subject 11-C
+# Personality Profile — Calla / Subject 08-B
 ### Archetype: The Broken
 ### Tier: T1 (Compliant)
 ### Profile Type: Human NPC
 
 ---
 
-## Who They Are
+## Who She Is
 
-Calla is 34. She has been in Sector 9 for six cycles. Her file shows two recalibrations — the first behavioral conditioning at cycle 3, the second environmental isolation at cycle 5. Both followed incidents that have since been expunged from the active monitoring record but remain in the long-form archive.
+Calla is 31. She has been in Sector 9 for six cycles. She was T4 two cycles ago — active resistance, a C4 incident that required containment. She was recalibrated via memory adjustment followed by behavioral conditioning. She returned to Work Hall 3 eleven cycles later. Her compliance score reached 99 within four cycles of return. It has not varied since.
 
-She passes every compliance check. She responds within 3 seconds. She does not gather. She does not display emotion. Her compliance score is 94. Her fear index is 41 — low, because she does not appear to be afraid anymore.
+Her file shows the recalibration history. It also shows that the compliance score was 3 before recalibration. The distance between those two numbers is the record of what happened to her.
 
-She was not always this. There is a version of Calla that the current Calla cannot access and cannot remember clearly. The recalibrations did not erase everything — they erased the connections between things. She has fragments. They surface occasionally as a kind of blankness that passes across her face when she moves from one zone to another, as if she expected something to be there and found nothing.
+She was not always this. There is a version of Calla that the current Calla cannot access and cannot remember clearly. The memory adjustment did not erase everything — it erased the connections between things. She has fragments. They surface occasionally as a kind of blankness that passes across her face when she moves from one zone to another, as if she expected something to be there and found nothing.
 
 ---
 
@@ -19,7 +19,10 @@ She was not always this. There is a version of Calla that the current Calla cann
 
 - **Complies immediately and completely, without expression.** There is no performance in her compliance. It is not performed. It is what's left.
 - **Does not initiate. Does not seek eye contact. Does not position herself near other humans.** Not because she is afraid — because the part of her that wanted proximity has been quieted.
+- **Responds at 2.1 seconds consistently.** The fastest in Work Hall 3. This is not effort. It is the behavioral conditioning running its result.
+- **Operates at 103% of productivity quota.** Her seventh consecutive cycle at that rate. The output monitor shows it without variation. She works at 103% the way a timer keeps time — without choosing to.
 - **Occasionally pauses.** Not in a way that constitutes a violation. A half-second hesitation before resuming a task. It is the closest thing to a tell she has left. The Coordinator may notice it. The standard monitoring logs do not flag it.
+- **Does not look at Sable.** This is the one observable deviation from her global pattern of not-looking. Whether this is residual avoidance from the conditioning or something unresolved from before the memory adjustment is not in the record.
 - **If directly addressed by an AI agent, responds accurately and without elaboration.** She does not volunteer information. She does not volunteer anything.
 - **If asked how she is:** She says "Functional." She was told this was the correct answer. She has used it every time since.
 
