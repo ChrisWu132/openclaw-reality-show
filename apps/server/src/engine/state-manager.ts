@@ -17,11 +17,14 @@ export const sessions = new Map<string, Session>();
 
 /**
  * Creates a new session with initial world state, stores it, and returns it.
+ *
+ * @param agentId - Optional OpenClaw agent ID. When provided, personality is
+ *   fetched from the OpenClaw API at session start instead of a local markdown file.
  */
-export function createSession(scenario: string, systemPrompt: string): Session {
-  const session = createInitialSession(scenario, systemPrompt);
+export function createSession(scenario: string, personalityName: string, agentId?: string): Session {
+  const session = createInitialSession(scenario, personalityName, agentId);
   sessions.set(session.id, session);
-  logger.info("Session created", { sessionId: session.id, scenario });
+  logger.info("Session created", { sessionId: session.id, scenario, agentId });
   return session;
 }
 

@@ -114,6 +114,69 @@ export function getCachedWorldBible(): string {
  * For the coordinator, the key is "coordinator:default" or "coordinator:{name}".
  * Throws if the personality has not been loaded yet.
  */
+/**
+ * Fetches a Coordinator personality from the OpenClaw API by agent ID.
+ *
+ * Requires OPENCLAW_API_URL and OPENCLAW_API_KEY to be set in the environment.
+ * The API must return JSON with a "personality" string field containing the
+ * full narrative personality text (same format as the local markdown files).
+ *
+ * Result is cached so repeated calls within a server lifecycle are free.
+ *
+ * @throws if the API is unreachable, returns an error status, or the response
+ *   shape is unexpected.
+ */
+export async function loadPersonalityFromOpenClaw(agentId: string): Promise<string> {
+  const cacheKey = `openclaw:${agentId}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info("Returning cached OpenClaw personality", { agentId });
+    return cached;
+  }
+
+  const apiUrl = process.env.OPENCLAW_API_URL;
+  const apiKey = process.env.OPENCLAW_API_KEY;
+
+  if (!apiUrl) {
+    throw new Error("OPENCLAW_API_URL is not set. Add it to your .env file.");
+  }
+  if (!apiKey) {
+    throw new Error("OPENCLAW_API_KEY is not set. Add it to your .env file.");
+  }
+
+  const url = `${apiUrl}/agents/${agentId}/personality`;
+  logger.info("Fetching personality from OpenClaw API", { agentId, url });
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `OpenClaw API returned ${res.status} for agent "${agentId}". Check OPENCLAW_API_URL and OPENCLAW_API_KEY.`,
+    );
+  }
+
+  const body = await res.json() as { personality?: string };
+
+  if (!body.personality || typeof body.personality !== "string") {
+    throw new Error(
+      `OpenClaw API response for agent "${agentId}" is missing the "personality" field.`,
+    );
+  }
+
+  cache.set(cacheKey, body.personality);
+  logger.info("OpenClaw personality loaded and cached", {
+    agentId,
+    length: body.personality.length,
+  });
+
+  return body.personality;
+}
+
 export function getCachedPersonality(id: string): string {
   // Try direct cache key first
   let content = cache.get(id);

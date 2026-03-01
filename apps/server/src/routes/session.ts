@@ -6,7 +6,7 @@ const logger = createLogger("routes:session");
 export const sessionRouter = Router();
 
 sessionRouter.post("/session/create", (req, res) => {
-  const { scenario, personality } = req.body;
+  const { scenario, personality, agentId } = req.body;
 
   if (scenario !== "work-halls") {
     res.status(400).json({
@@ -15,7 +15,7 @@ sessionRouter.post("/session/create", (req, res) => {
     return;
   }
 
-  const session = createSession(scenario, personality || "coordinator-default");
+  const session = createSession(scenario, personality || "coordinator-default", agentId);
   const wsUrl = `ws://${req.headers.host}/session/${session.id}`;
 
   logger.info(`Session created: ${session.id}`, { scenario });

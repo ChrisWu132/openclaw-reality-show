@@ -76,6 +76,28 @@ export function buildSystemPrompt(coordinatorPersonalityName?: string): string {
 }
 
 /**
+ * Builds the system prompt using raw personality text supplied directly
+ * (e.g. fetched from the OpenClaw API) instead of a cached file name.
+ *
+ * Assembly order is identical to buildSystemPrompt():
+ *   1. WORLD_BIBLE.md
+ *   2. Raw personality text
+ *   3. JSON format instructions
+ */
+export function buildSystemPromptFromText(personalityText: string): string {
+  const worldBible = getCachedWorldBible();
+
+  logger.info("Building system prompt from raw personality text", {
+    worldBibleLength: worldBible.length,
+    personalityLength: personalityText.length,
+  });
+
+  return [worldBible, "---", personalityText, JSON_FORMAT_INSTRUCTIONS].join(
+    "\n\n",
+  );
+}
+
+/**
  * Interpolates {{key}} placeholders in a template string with the
  * provided values. Unmatched placeholders are left as-is.
  */

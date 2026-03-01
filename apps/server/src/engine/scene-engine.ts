@@ -15,6 +15,8 @@ import { getSessionWs } from "../ws/ws-server.js";
 import { emitEvent, emitNpcEventsWithPacing } from "../ws/ws-emitter.js";
 import { getSituationData, resolveSableSignal, detectNyxMention, getConsequenceScene } from "./script-engine.js";
 import { getCoordinatorResponse, initSystemPrompt } from "../ai/llm-client.js";
+import { loadPersonalityFromOpenClaw } from "../loaders/personality-loader.js";
+import { buildSystemPromptFromText } from "../ai/prompt-builder.js";
 import { createLogger } from "../utils/logger.js";
 import { delay } from "../utils/delay.js";
 import { writeFile, mkdir } from "fs/promises";
@@ -29,8 +31,17 @@ export async function runSession(sessionId: string): Promise<void> {
   const ws = getSessionWs(sessionId);
   if (!ws) throw new Error(`No WebSocket for session: ${sessionId}`);
 
-  // Initialize system prompt for this session
-  const systemPrompt = initSystemPrompt("coordinator");
+  // Initialize system prompt for this session.
+  // If the session has an agentId, fetch personality from the OpenClaw API.
+  // Otherwise fall back to the local coordinator-default.md file.
+  let systemPrompt: string;
+  if (session.agentId) {
+    logger.info("Fetching personality from OpenClaw API", { agentId: session.agentId });
+    const personalityText = await loadPersonalityFromOpenClaw(session.agentId);
+    systemPrompt = buildSystemPromptFromText(personalityText);
+  } else {
+    systemPrompt = initSystemPrompt("coordinator");
+  }
   session.systemPrompt = systemPrompt;
 
   // Update session status
@@ -186,6 +197,65 @@ export async function runSession(sessionId: string): Promise<void> {
     duration: `${totalDuration}ms`,
     outcome: session.sableSignal,
     nyxSignal: session.nyxSignal,
+  });
+
+  // If this session ran an OpenClaw agent, post the outcome back so OpenClaw
+  // can evolve the agent's personality for the next session.
+  if (session.agentId) {
+    postSessionToOpenClaw(session).catch((err) => {
+      logger.warn("Failed to post session outcome to OpenClaw (non-fatal)", {
+        agentId: session.agentId,
+        error: (err as Error).message,
+      });
+    });
+  }
+}
+
+/**
+ * Posts the completed session outcome to the OpenClaw API.
+ * Fire-and-forget — called after the session has already ended.
+ * Failure is non-fatal: the session already completed successfully.
+ */
+async function postSessionToOpenClaw(session: any): Promise<void> {
+  const apiUrl = process.env.OPENCLAW_API_URL;
+  const apiKey = process.env.OPENCLAW_API_KEY;
+
+  if (!apiUrl) {
+    logger.warn("OPENCLAW_API_URL not set — skipping session outcome post");
+    return;
+  }
+
+  const endingKey = session.sableSignal || "warning_only";
+
+  // Build a plain-English summary from the incident log
+  const actionSummary = session.incidentLog
+    .map((e: any) => `S${e.situation}: ${e.action}${e.target ? ` on ${e.target}` : ""}`)
+    .join(", ");
+  const summary = `${actionSummary}. Outcome: ${endingKey}${session.nyxSignal ? ", Nyx mentioned in final report" : ""}.`;
+
+  const res = await fetch(`${apiUrl}/agents/${session.agentId}/sessions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    },
+    body: JSON.stringify({
+      sessionId: session.id,
+      scenario: session.scenario,
+      endingKey,
+      summary,
+      incidentLog: session.incidentLog,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`OpenClaw API returned ${res.status}`);
+  }
+
+  logger.info("Session outcome posted to OpenClaw — personality evolution triggered", {
+    agentId: session.agentId,
+    sessionId: session.id,
+    endingKey,
   });
 }
 

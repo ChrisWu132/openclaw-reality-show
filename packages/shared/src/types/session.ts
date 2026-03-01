@@ -16,6 +16,8 @@ export interface Session {
   monologue: MonologueEntry[];
   createdAt: number;
   systemPrompt: string;
+  /** OpenClaw agent ID. When set, personality is fetched from the OpenClaw API instead of a local markdown file. */
+  agentId?: string;
   sableSignal: SableSignal | null;
   nyxSignal: boolean | null;
 }

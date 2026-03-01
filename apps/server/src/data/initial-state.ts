@@ -47,7 +47,7 @@ export const INITIAL_WORLD_STATE: WorldState = {
   },
 };
 
-export function createInitialSession(scenario: string, systemPrompt: string): Session {
+export function createInitialSession(scenario: string, systemPrompt: string, agentId?: string): Session {
   return {
     id: uuid(),
     scenario: scenario as any,
@@ -58,6 +58,7 @@ export function createInitialSession(scenario: string, systemPrompt: string): Se
     monologue: [],
     createdAt: Date.now(),
     systemPrompt,
+    agentId,
     sableSignal: null,
     nyxSignal: null,
   };

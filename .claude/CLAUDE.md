@@ -112,6 +112,10 @@ The running incident log is a markdown document that grows through the session. 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-01: [openclaw] OpenClaw personality + agent memory evolution system
+  - Files created: apps/openclaw/ (full service), personalities/openclaw.md
+  - Files modified: packages/shared/src/types/session.ts, apps/server/src/data/initial-state.ts, apps/server/src/engine/state-manager.ts, apps/server/src/engine/scene-engine.ts, apps/server/src/loaders/personality-loader.ts, apps/server/src/ai/prompt-builder.ts, apps/server/src/routes/session.ts, package.json, .env, .env.example
+  - Breaking changes: no — agentId is optional, falls back to coordinator-default.md when absent
 - 2026-03-01: [frontend] Narrative pacing & spectator experience overhaul (Round 4)
   - Files modified: gameStore.ts, AIDecidingOverlay.tsx, MonologueViewer.tsx, SituationCard.tsx, DialogueOverlay.tsx, App.tsx, GameContainer.tsx, ConsequenceScene.tsx
   - Breaking changes: yes — aiDeciding no longer set on NPC events; pendingReasoning delays monologue 1.5s; SituationCard duration 2.5s→4.5s; consequence phase renders GameContainer underneath; button text changed to "BEGIN ANOTHER CYCLE"
