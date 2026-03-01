@@ -53,7 +53,7 @@ export function SituationCard() {
         justifyContent: "flex-start",
         alignItems: "center",
         paddingTop: "30%",
-        background: "rgba(0, 0, 0, 0.7)",
+        background: "rgba(0, 0, 0, 0.88)",
         zIndex: 30,
         pointerEvents: "none",
         animation: phase === "fadeout" ? "situationFadeOut 1s ease-out forwards" : "fadeIn 0.5s ease-in",

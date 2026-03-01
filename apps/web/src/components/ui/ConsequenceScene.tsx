@@ -70,7 +70,7 @@ export function ConsequenceScene() {
   }, [showDivider, showEpilogue, epilogue]);
 
   // Background: starts 40% opaque, ends 90% opaque
-  const bgOpacity = 0.4 + bgProgress * 0.5;
+  const bgOpacity = 0.65 + bgProgress * 0.3;
 
   return (
     <div
