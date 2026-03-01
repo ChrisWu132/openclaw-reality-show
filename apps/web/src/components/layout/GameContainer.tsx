@@ -19,8 +19,10 @@ export function GameContainer() {
   const app = getPixiApp();
   useSceneProcessor(sprites, app);
 
+  const phase = useGameStore((s) => s.phase);
   const waitingForClick = useGameStore((s) => s.waitingForClick);
   const advanceDialogue = useGameStore((s) => s.advanceDialogue);
+  const isConsequence = phase === "consequence";
 
   const [scale, setScale] = useState(1);
 
@@ -57,29 +59,42 @@ export function GameContainer() {
           transformOrigin: "center center",
         }}
       >
-        <SceneCanvas />
-        <ZoneLabel />
-        <SessionStatus />
-        <DialogueOverlay />
-        <AIDecidingOverlay />
-        <IncidentPanel />
-        <SituationCard />
-        <MonologuePanel />
-        {/* Transparent click overlay — advances dialogue on click */}
         <div
-          onClick={() => {
-            if (waitingForClick) {
-              advanceDialogue();
-            }
-          }}
           style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 25,
-            cursor: waitingForClick ? "pointer" : "default",
-            pointerEvents: waitingForClick ? "auto" : "none",
+            filter: isConsequence ? "grayscale(60%) brightness(0.3)" : "none",
+            transition: "filter 3s ease-out",
+            width: "100%",
+            height: "100%",
           }}
-        />
+        >
+          <SceneCanvas />
+        </div>
+        {!isConsequence && (
+          <>
+            <ZoneLabel />
+            <SessionStatus />
+            <DialogueOverlay />
+            <AIDecidingOverlay />
+            <IncidentPanel />
+            <SituationCard />
+            <MonologuePanel />
+            {/* Transparent click overlay — advances dialogue on click */}
+            <div
+              onClick={() => {
+                if (waitingForClick) {
+                  advanceDialogue();
+                }
+              }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 25,
+                cursor: waitingForClick ? "pointer" : "default",
+                pointerEvents: waitingForClick ? "auto" : "none",
+              }}
+            />
+          </>
+        )}
       </div>
     </div>
   );

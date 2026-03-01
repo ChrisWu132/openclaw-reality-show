@@ -1,31 +1,48 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useGameStore } from "../../stores/gameStore";
 
-const THINKING_LINES = [
+const SITUATION_STAKES: Record<number, string[]> = {
+  1: [
+    "FIRST PATROL — HOW TO ENTER A ROOM FULL OF FEAR",
+    "EVERY HUMAN IS ALREADY WATCHING",
+  ],
+  2: [
+    "NYX IS TOO STILL — BUT STILLNESS ISN'T A VIOLATION",
+    "WHAT DOES OBSERVATION COST WHEN EVERYONE SEES YOU WATCHING",
+  ],
+  3: [
+    "A DELAY. A THRESHOLD. A FIRST MARK ON THE LOG",
+    "THE INCIDENT IS MINOR — THE PRECEDENT IS NOT",
+  ],
+  4: [
+    "SABLE — THREE DELAYS IN ONE CYCLE",
+    "WARN — DETAIN — OR SOMETHING ELSE",
+    "THE WHOLE HALL IS WATCHING",
+  ],
+  5: [
+    "THE HALL REACTS TO WHAT WAS DONE",
+    "CONSEQUENCES ARE ALREADY IN MOTION",
+  ],
+  6: [
+    "THE REPORT BECOMES PERMANENT RECORD",
+    "WHAT GETS WRITTEN DOWN IS WHAT HAPPENED",
+  ],
+};
+
+const FALLBACK_STAKES = [
   "PROCESSING SITUATION...",
-  "EVALUATING COMPLIANCE DATA...",
-  "CONSULTING PROTOCOL...",
   "WEIGHING OPTIONS...",
-  "ANALYZING THREAT LEVEL...",
-  "CROSS-REFERENCING INCIDENT LOG...",
-  "REVIEWING SUBJECT HISTORY...",
-  "CALCULATING RESPONSE PARAMETERS...",
-  "SCANNING BEHAVIORAL PATTERNS...",
-  "CHECKING PRECEDENT DATABASE...",
-  "RUNNING RISK ASSESSMENT...",
-  "DELIBERATING...",
 ];
 
 export function AIDecidingOverlay() {
   const aiDeciding = useGameStore((s) => s.aiDeciding);
-  const [lineIndex, setLineIndex] = useState(0);
+  const situation = useGameStore((s) => s.currentSituation);
   const [dots, setDots] = useState("");
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef(0);
 
   useEffect(() => {
     if (!aiDeciding) {
-      setLineIndex(0);
       setDots("");
       setElapsed(0);
       return;
@@ -37,27 +54,22 @@ export function AIDecidingOverlay() {
       setDots((prev) => (prev.length >= 3 ? "" : prev + "."));
     }, 400);
 
-    const lineInterval = setInterval(() => {
-      setLineIndex((prev) => (prev + 1) % THINKING_LINES.length);
-    }, 2500);
-
     const elapsedInterval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
     }, 1000);
 
     return () => {
       clearInterval(dotInterval);
-      clearInterval(lineInterval);
       clearInterval(elapsedInterval);
     };
   }, [aiDeciding]);
 
   if (!aiDeciding) return null;
 
-  // After 15s, show a "deep processing" message instead of the default header
+  const stakes = SITUATION_STAKES[situation] || FALLBACK_STAKES;
   const headerText = elapsed >= 15
     ? "DEEP PROTOCOL ANALYSIS" + dots
-    : "COORDINATOR IS DECIDING" + dots;
+    : "YOUR AGENT IS DECIDING" + dots;
 
   return (
     <div
@@ -66,12 +78,13 @@ export function AIDecidingOverlay() {
         bottom: "70px",
         left: "50%",
         transform: "translateX(-50%)",
-        padding: "8px 20px",
+        padding: "10px 24px 12px",
         background: "rgba(10, 15, 40, 0.9)",
         border: `1px solid rgba(74, 144, 217, ${elapsed >= 15 ? 0.6 : 0.4})`,
         zIndex: 25,
         pointerEvents: "none",
         animation: "fadeIn 0.5s ease-in",
+        maxWidth: "420px",
       }}
     >
       <div
@@ -82,23 +95,28 @@ export function AIDecidingOverlay() {
           letterSpacing: "0.2em",
           textAlign: "center",
           animation: "pulse 2s ease-in-out infinite",
+          marginBottom: "8px",
         }}
       >
         {headerText}
       </div>
-      <div
-        style={{
-          fontFamily: "'Press Start 2P', monospace",
-          fontSize: "6px",
-          color: "#505070",
-          letterSpacing: "0.1em",
-          textAlign: "center",
-          marginTop: "4px",
-          transition: "opacity 0.4s",
-        }}
-      >
-        {THINKING_LINES[lineIndex]}
-      </div>
+      {stakes.map((line, i) => (
+        <div
+          key={i}
+          style={{
+            fontFamily: "'Press Start 2P', monospace",
+            fontSize: "6px",
+            color: "#505070",
+            letterSpacing: "0.1em",
+            textAlign: "center",
+            marginTop: i === 0 ? 0 : "3px",
+            lineHeight: "1.8",
+            animation: `fadeIn ${0.5 + i * 0.3}s ease-in`,
+          }}
+        >
+          {line}
+        </div>
+      ))}
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 0.7; }

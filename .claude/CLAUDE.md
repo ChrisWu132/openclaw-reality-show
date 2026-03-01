@@ -112,6 +112,9 @@ The running incident log is a markdown document that grows through the session. 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-01: [frontend] Narrative pacing & spectator experience overhaul (Round 4)
+  - Files modified: gameStore.ts, AIDecidingOverlay.tsx, MonologueViewer.tsx, SituationCard.tsx, DialogueOverlay.tsx, App.tsx, GameContainer.tsx, ConsequenceScene.tsx
+  - Breaking changes: yes — aiDeciding no longer set on NPC events; pendingReasoning delays monologue 1.5s; SituationCard duration 2.5s→4.5s; consequence phase renders GameContainer underneath; button text changed to "BEGIN ANOTHER CYCLE"
 - 2026-03-01: [frontend] Fullscreen viewport scaling + Coordinator 1.4x size distinction
   - Files modified: GameContainer.tsx, sprites.ts, animations.ts
   - Breaking changes: no — canvas stays 960x540 internally, CSS transform scales to viewport

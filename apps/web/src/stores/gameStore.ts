@@ -29,6 +29,8 @@ interface GameState {
   consequenceScene: ConsequenceScene | null;
   nyxModifier: boolean;
   currentReasoning: string | null;
+  /** Reasoning waiting to be revealed after a delay */
+  pendingReasoning: string | null;
   monologueEntries: MonologueEntry[];
   currentMonologueIndex: number;
   error: string | null;
@@ -53,6 +55,8 @@ interface GameState {
   /** User clicked — advance to next queued event */
   advanceDialogue: () => void;
   setWaitingForClick: (waiting: boolean) => void;
+  /** Reveal pending reasoning into currentReasoning */
+  revealReasoning: () => void;
   setMonologue: (entries: MonologueEntry[]) => void;
   nextMonologue: () => void;
   previousMonologue: () => void;
@@ -77,6 +81,7 @@ const initialState = {
   consequenceScene: null as ConsequenceScene | null,
   nyxModifier: false,
   currentReasoning: null as string | null,
+  pendingReasoning: null as string | null,
   monologueEntries: [] as MonologueEntry[],
   currentMonologueIndex: 0,
   error: null as string | null,
@@ -104,6 +109,7 @@ export const useGameStore = create<GameState>((set) => ({
       currentLocation: location,
       situationLabel: label,
       currentReasoning: null,
+      pendingReasoning: null,
       // When a new situation starts, AI will need to decide after NPCs speak
       aiDeciding: false,
     }),
@@ -111,19 +117,21 @@ export const useGameStore = create<GameState>((set) => ({
   handleSceneEvent: (event) =>
     set((state) => {
       const isCoordinator = event.speaker === "coordinator";
-
-      // Track AI deciding state
-      const aiDeciding = isCoordinator ? false : true;
       const lastNpcSpeaker = isCoordinator ? state.lastNpcSpeaker : event.speaker;
 
-      // Store reasoning for inline monologue panel
+      // Coordinator arriving means AI is done deciding
+      // NPC events do NOT set aiDeciding — that happens when queue drains
       const updates: Partial<GameState> = {
-        aiDeciding,
         lastNpcSpeaker,
       };
 
-      if (isCoordinator && event.reasoning) {
-        updates.currentReasoning = event.reasoning;
+      if (isCoordinator) {
+        updates.aiDeciding = false;
+        // Store reasoning as pending — MonologueViewer will reveal after delay
+        if (event.reasoning) {
+          updates.pendingReasoning = event.reasoning;
+          updates.currentReasoning = null;
+        }
       }
 
       if (INCIDENT_ACTIONS.has(event.action)) {
@@ -150,8 +158,13 @@ export const useGameStore = create<GameState>((set) => ({
     set((state) => {
       if (!state.waitingForClick) return state;
       if (state.eventQueue.length === 0) {
-        // Nothing queued — just clear the waiting state
-        return { waitingForClick: false };
+        // Nothing queued — check if last displayed event was NPC → AI should decide
+        const lastEvent = state.sceneEvents[state.sceneEvents.length - 1];
+        const lastWasNpc = lastEvent && lastEvent.speaker !== "coordinator" && lastEvent.speaker !== "narrator";
+        return {
+          waitingForClick: false,
+          aiDeciding: lastWasNpc ? true : state.aiDeciding,
+        };
       }
       // Take next event from queue and push into sceneEvents
       const [next, ...rest] = state.eventQueue;
@@ -163,6 +176,12 @@ export const useGameStore = create<GameState>((set) => ({
     }),
 
   setWaitingForClick: (waiting) => set({ waitingForClick: waiting }),
+
+  revealReasoning: () =>
+    set((state) => ({
+      currentReasoning: state.pendingReasoning,
+      pendingReasoning: null,
+    })),
 
   handleSessionEnd: (consequenceScene, nyxModifier) =>
     set({

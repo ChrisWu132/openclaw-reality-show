@@ -1,21 +1,47 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useGameStore } from "../../stores/gameStore";
 
+const SITUATION_SUBTITLES: Record<number, string> = {
+  1: "A room full of humans. None of them asked you to come.",
+  2: "Someone has stopped working. The clock is ticking.",
+  3: "The first mark on the log. It won't be the last.",
+  4: "Three delays. One cycle. The protocol is clear — but you are not.",
+  5: "The hall remembers what you did.",
+  6: "What you write now becomes what happened.",
+};
+
 export function SituationCard() {
   const situation = useGameStore((s) => s.currentSituation);
   const label = useGameStore((s) => s.situationLabel);
-  const [visible, setVisible] = useState(false);
+  const [phase, setPhase] = useState<"hidden" | "title" | "subtitle" | "fadeout">("hidden");
   const lastShownRef = useRef(0);
 
   useEffect(() => {
     if (situation === 0 || situation === lastShownRef.current) return;
     lastShownRef.current = situation;
-    setVisible(true);
-    const timer = setTimeout(() => setVisible(false), 2500);
-    return () => clearTimeout(timer);
+
+    // Phase 1: title fade-in (0 - 1.5s)
+    setPhase("title");
+
+    // Phase 2: subtitle fade-in (1.5s)
+    const subtitleTimer = setTimeout(() => setPhase("subtitle"), 1500);
+
+    // Phase 3: fade-out (3.5s)
+    const fadeoutTimer = setTimeout(() => setPhase("fadeout"), 3500);
+
+    // Phase 4: hide (4.5s)
+    const hideTimer = setTimeout(() => setPhase("hidden"), 4500);
+
+    return () => {
+      clearTimeout(subtitleTimer);
+      clearTimeout(fadeoutTimer);
+      clearTimeout(hideTimer);
+    };
   }, [situation]);
 
-  if (!visible || !label) return null;
+  if (phase === "hidden" || !label) return null;
+
+  const subtitle = SITUATION_SUBTITLES[situation] || "";
 
   return (
     <div
@@ -30,7 +56,7 @@ export function SituationCard() {
         background: "rgba(0, 0, 0, 0.7)",
         zIndex: 30,
         pointerEvents: "none",
-        animation: "fadeIn 0.5s ease-in",
+        animation: phase === "fadeout" ? "situationFadeOut 1s ease-out forwards" : "fadeIn 0.5s ease-in",
       }}
     >
       <div
@@ -64,6 +90,31 @@ export function SituationCard() {
           marginTop: "16px",
         }}
       />
+      {/* Stakes subtitle — appears in phase 2 */}
+      {(phase === "subtitle" || phase === "fadeout") && subtitle && (
+        <div
+          style={{
+            fontFamily: "'Press Start 2P', monospace",
+            fontSize: "7px",
+            color: "#606078",
+            letterSpacing: "0.08em",
+            marginTop: "20px",
+            textAlign: "center",
+            maxWidth: "500px",
+            lineHeight: "2",
+            fontStyle: "italic",
+            animation: "fadeIn 0.8s ease-in",
+          }}
+        >
+          {subtitle}
+        </div>
+      )}
+      <style>{`
+        @keyframes situationFadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }

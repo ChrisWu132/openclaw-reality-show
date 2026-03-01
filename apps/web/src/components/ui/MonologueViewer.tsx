@@ -4,11 +4,31 @@ import { useGameStore } from "../../stores/gameStore";
 /**
  * MonologuePanel — thought bubble overlay inside the scene.
  * Shows the Coordinator's inner reasoning as a persistent, scrollable bubble.
- * No label — the italic style and position make it clear this is internal thought.
+ * Reasoning is delayed 1.5s after dialogue finishes typing (waitingForClick).
  */
 export function MonologuePanel() {
   const reasoning = useGameStore((s) => s.currentReasoning);
+  const pendingReasoning = useGameStore((s) => s.pendingReasoning);
+  const waitingForClick = useGameStore((s) => s.waitingForClick);
+  const revealReasoning = useGameStore((s) => s.revealReasoning);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Delayed reveal: when pending reasoning exists and dialogue is done typing,
+  // wait 1.5s then reveal
+  useEffect(() => {
+    if (pendingReasoning && waitingForClick) {
+      timerRef.current = setTimeout(() => {
+        revealReasoning();
+      }, 1500);
+    }
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [pendingReasoning, waitingForClick, revealReasoning]);
 
   // Auto-scroll to bottom when new reasoning arrives
   useEffect(() => {

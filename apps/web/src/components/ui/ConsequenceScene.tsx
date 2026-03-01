@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { useGameStore } from "../../stores/gameStore";
 
+const EPILOGUE_LINES: Record<string, string> = {
+  "The Processing Suite": "Sable will remember. That is the point.",
+  "The Unresolved Spark": "The wall is still there. But someone looked back.",
+  "The Quiet Patrol": "Tomorrow the gate opens again.",
+};
+
 export function ConsequenceScene() {
   const consequenceScene = useGameStore((s) => s.consequenceScene);
   const reset = useGameStore((s) => s.reset);
   const [visibleLines, setVisibleLines] = useState(0);
+  const [showDivider, setShowDivider] = useState(false);
+  const [showEpilogue, setShowEpilogue] = useState(false);
   const [showButton, setShowButton] = useState(false);
   const [titleVisible, setTitleVisible] = useState(false);
+  const [bgProgress, setBgProgress] = useState(0);
 
   if (!consequenceScene) return null;
 
@@ -17,11 +26,19 @@ export function ConsequenceScene() {
       speaker: e.speaker,
     }));
 
+  const epilogue = EPILOGUE_LINES[consequenceScene.title] || "";
+
   useEffect(() => {
-    // Show title after brief pause
     const titleTimer = setTimeout(() => setTitleVisible(true), 100);
     return () => clearTimeout(titleTimer);
   }, []);
+
+  // Progressive background darkening as lines appear
+  useEffect(() => {
+    if (lines.length > 0 && visibleLines > 0) {
+      setBgProgress(Math.min(visibleLines / lines.length, 1));
+    }
+  }, [visibleLines, lines.length]);
 
   useEffect(() => {
     if (!titleVisible) return;
@@ -31,23 +48,43 @@ export function ConsequenceScene() {
       }, 3500);
       return () => clearTimeout(timer);
     } else {
-      const timer = setTimeout(() => setShowButton(true), 2500);
-      return () => clearTimeout(timer);
+      // All lines shown → 3s → divider
+      const dividerTimer = setTimeout(() => setShowDivider(true), 3000);
+      return () => clearTimeout(dividerTimer);
     }
   }, [visibleLines, lines.length, titleVisible]);
+
+  // Divider shown → 2s → epilogue
+  useEffect(() => {
+    if (!showDivider || !epilogue) return;
+    const timer = setTimeout(() => setShowEpilogue(true), 2000);
+    return () => clearTimeout(timer);
+  }, [showDivider, epilogue]);
+
+  // Epilogue shown → 3s → button (or divider → 3s → button if no epilogue)
+  useEffect(() => {
+    if (epilogue && !showEpilogue) return;
+    if (!showDivider) return;
+    const timer = setTimeout(() => setShowButton(true), 3000);
+    return () => clearTimeout(timer);
+  }, [showDivider, showEpilogue, epilogue]);
+
+  // Background: starts 40% opaque, ends 90% opaque
+  const bgOpacity = 0.4 + bgProgress * 0.5;
 
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        background: "#050508",
+        background: `rgba(5, 5, 8, ${bgOpacity})`,
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
         padding: "40px",
         zIndex: 100,
+        transition: "background 2s ease-out",
       }}
     >
       <div style={{ maxWidth: "650px", width: "100%" }}>
@@ -90,7 +127,38 @@ export function ConsequenceScene() {
           );
         })}
 
-        {/* Watch Another button */}
+        {/* Divider line */}
+        {showDivider && (
+          <div
+            style={{
+              width: "80px",
+              height: "1px",
+              background: "linear-gradient(90deg, transparent, #404060, transparent)",
+              margin: "30px auto",
+              animation: "fadeIn 1s ease-in",
+            }}
+          />
+        )}
+
+        {/* Epilogue quote */}
+        {showEpilogue && epilogue && (
+          <div
+            style={{
+              fontFamily: "'Press Start 2P', monospace",
+              fontSize: "8px",
+              color: "#606078",
+              lineHeight: "2.2",
+              textAlign: "center",
+              fontStyle: "italic",
+              animation: "fadeIn 1.5s ease-in",
+              marginBottom: "10px",
+            }}
+          >
+            {epilogue}
+          </div>
+        )}
+
+        {/* Button */}
         {showButton && (
           <div style={{ textAlign: "center", marginTop: "40px", animation: "fadeIn 1s ease-in" }}>
             <button
@@ -115,7 +183,7 @@ export function ConsequenceScene() {
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
-              WATCH ANOTHER
+              BEGIN ANOTHER CYCLE
             </button>
           </div>
         )}

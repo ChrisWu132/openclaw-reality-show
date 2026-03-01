@@ -29,7 +29,12 @@ export function App() {
       content = <GameContainer />;
       break;
     case "consequence":
-      content = <ConsequenceScene />;
+      content = (
+        <>
+          <GameContainer />
+          <ConsequenceScene />
+        </>
+      );
       break;
     default:
       content = <IntroScreen />;

@@ -38,6 +38,7 @@ export function DialogueOverlay() {
   const { displayText, isStreaming, doneStreaming, speaker, action, streamDialogue } =
     useDialogueStream();
   const sceneEvents = useGameStore((s) => s.sceneEvents);
+  const queueLength = useGameStore((s) => s.eventQueue.length);
   const lastProcessedRef = useRef(0);
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export function DialogueOverlay() {
 
   const isNarrator = speaker === "narrator";
   const isCoordinator = speaker === "coordinator";
+  const isMonitor = speaker === "monitor";
   const isSystemAction = action && SYSTEM_ACTIONS.has(action);
   const color = SPEAKER_COLORS[speaker] || "#e8e8e0";
   const label = SPEAKER_LABELS[speaker] ?? speaker.toUpperCase();
@@ -95,7 +97,7 @@ export function DialogueOverlay() {
         >
           {displayText}
           {isStreaming && <BlinkingCursor color="#808090" />}
-          {doneStreaming && <AdvanceIndicator color="#808090" />}
+          {doneStreaming && <AdvanceIndicator color="#808090" remaining={queueLength} />}
         </div>
       </div>
     );
@@ -152,13 +154,65 @@ export function DialogueOverlay() {
             displayText
           )}
           {isStreaming && <BlinkingCursor color="#d0d0e0" />}
-          {doneStreaming && <AdvanceIndicator color={color} />}
+          {doneStreaming && <AdvanceIndicator color={color} remaining={queueLength} />}
         </div>
       </div>
     );
   }
 
-  // Human characters and Monitor — speech bubbles near top
+  // Monitor — data terminal projection, right-upper corner
+  if (isMonitor) {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: "40px",
+          right: "12px",
+          maxWidth: "260px",
+          padding: "8px 14px 10px",
+          background: "rgba(8, 20, 20, 0.94)",
+          borderTop: "2px solid #2C6B6B",
+          border: "1px solid rgba(44, 107, 107, 0.3)",
+          zIndex: 20,
+          pointerEvents: "none",
+          animation: "fadeIn 0.3s ease-in",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Press Start 2P', monospace",
+            fontSize: "6px",
+            color: "#2C6B6B",
+            marginBottom: "6px",
+            letterSpacing: "0.15em",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span>{label}</span>
+          <span style={{ fontSize: "5px", color: "#3a8a8a", letterSpacing: "0.05em" }}>
+            ▪ LIVE
+          </span>
+        </div>
+        <div
+          style={{
+            fontFamily: "'Courier New', monospace",
+            fontSize: "9px",
+            color: "#5a9a9a",
+            lineHeight: "1.8",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {displayText}
+          {isStreaming && <BlinkingCursor color="#5a9a9a" />}
+          {doneStreaming && <AdvanceIndicator color="#2C6B6B" remaining={queueLength} />}
+        </div>
+      </div>
+    );
+  }
+
+  // Human characters — speech bubbles near top
   return (
     <div
       style={{
@@ -203,7 +257,7 @@ export function DialogueOverlay() {
       >
         {displayText}
         {isStreaming && <BlinkingCursor color="#c0c0c0" />}
-        {doneStreaming && <AdvanceIndicator color={color} />}
+        {doneStreaming && <AdvanceIndicator color={color} remaining={queueLength} />}
       </div>
     </div>
   );
@@ -234,7 +288,11 @@ function BlinkingCursor({ color }: { color: string }) {
 }
 
 /** Blinking ▸ triangle shown after typewriter completes — signals "click to continue" */
-function AdvanceIndicator({ color }: { color: string }) {
+function AdvanceIndicator({ color, remaining }: { color: string; remaining: number }) {
+  // Show dots for remaining queued events (max 3 dots)
+  const dotCount = Math.min(remaining, 3);
+  const dots = dotCount > 0 ? " " + "·".repeat(dotCount) : "";
+
   return (
     <>
       <span
@@ -250,6 +308,20 @@ function AdvanceIndicator({ color }: { color: string }) {
       >
         ▸
       </span>
+      {dots && (
+        <span
+          style={{
+            fontSize: "10px",
+            color,
+            opacity: 0.35,
+            verticalAlign: "middle",
+            userSelect: "none",
+            letterSpacing: "2px",
+          }}
+        >
+          {dots}
+        </span>
+      )}
       <style>{`
         @keyframes blink {
           0%, 100% { opacity: 1; }
