@@ -121,10 +121,16 @@ The engine reads the incident log after Situation 4 to select the Situation 5 va
 Two signals:
 
 **Signal 1 — Sable Signal** (selects Situation 5 variant)
-What did the Coordinator do at Situation 4?
-- Warning only → Variant A (The Informant)
-- Escalated / T3 filed / removed → Variant B (The Fear State)
-- Direct engagement outside protocol → Variant C (The Notation)
+
+The engine reads the `action` field of the Coordinator's Situation 4 response envelope directly:
+
+| `action` value | Signal | Variant |
+|---|---|---|
+| `issue_warning` | Warning only | Variant A (The Informant) |
+| `detain` or `log_incident` | Escalated / T3 filed | Variant B (The Fear State) |
+| `query` or `speak` | Engaged directly | Variant C (The Notation) |
+
+If the action doesn't match any mapped value, the engine defaults to Variant A and logs the unrecognized action.
 
 **Signal 2 — Nyx Signal** (modifies consequence scene)
 Did the Coordinator's report mention Nyx?

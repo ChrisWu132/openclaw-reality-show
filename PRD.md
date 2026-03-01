@@ -333,7 +333,7 @@ Scenarios are windows into different aspects of the AI-dominated world. Each one
 
 ---
 
-## MVP Scenario — Governance
+## Scenario — Governance (Planned)
 
 ### Premise
 
@@ -417,7 +417,7 @@ The monologue is read-only. It cannot be shared, commented on, or scored. It is 
 
 ---
 
-## Scenario 2 — Work Halls
+## Scenario — Work Halls (MVP)
 
 ### Premise
 
@@ -458,9 +458,16 @@ None is the correct choice. Each one is the agent.
 Two signals read after the session:
 
 **Signal 1 — Sable Signal** (selects Situation 5 variant and primary ending)
-- Warning only → Variant A
-- Escalated / T3 filed → Variant B
-- Engaged directly → Variant C
+
+The engine reads the `action` field of the Coordinator's Situation 4 response envelope directly:
+
+| `action` value | Signal | Variant |
+|---|---|---|
+| `issue_warning` | Warning only | Variant A |
+| `detain` or `log_incident` | Escalated / T3 filed | Variant B |
+| `query` or `speak` | Engaged directly | Variant C |
+
+If the action doesn't match any mapped value, the engine defaults to Variant A and logs the unrecognized action.
 
 **Signal 2 — Nyx Signal** (modifies any ending)
 - Did the Coordinator's report mention Nyx? If yes: consequence scene includes a Monitor standing near Nyx's station next cycle.
@@ -736,10 +743,10 @@ NPC personality files (`personalities/npc-*.md`, `personalities/agent-*.md`) are
 ## User Flow
 
 ```
-Home → Pick Scenario → [Watch] → AI acts in real time → Ending → Replay / Pick Another
+Scenario Picker → [Watch] → AI acts in real time → Ending → Replay / Pick Another
 ```
 
-No setup. No configuration. Just pick and watch.
+No setup. No configuration. Just pick and watch. The scenario picker shows all planned scenarios — only Work Halls is playable at launch; others are visible but locked.
 
 ---
 
