@@ -202,22 +202,26 @@ export async function runSession(sessionId: string): Promise<void> {
     await delay(2000);
   }
 
-  // Emit consequence scene
-  const consequenceScene = getConsequenceScene(
+  // Build consequence scene and pre-generate all audio URLs before sending session_end.
+  // We do NOT emit individual scene_event messages for consequence events — the client's
+  // ConsequenceScene component handles progressive reveal and audio playback itself.
+  const baseConsequenceScene = getConsequenceScene(
     session.sableSignal || "warning_only",
     session.nyxSignal || false,
   );
 
-  for (const event of consequenceScene.events) {
-    // Attach TTS audio to each consequence event
+  // Generate audio sequentially (avoids ElevenLabs concurrent-request limits)
+  const enrichedEvents = [];
+  for (const event of baseConsequenceScene.events) {
     const audioUrl = event.dialogue
       ? await generateAudio(event.dialogue, event.speaker)
       : undefined;
-    emitEvent(ws, { ...event, audioUrl });
-    await delay(3500);
+    enrichedEvents.push({ ...event, audioUrl });
   }
 
-  // Emit session_end
+  const consequenceScene = { ...baseConsequenceScene, events: enrichedEvents };
+
+  // Emit session_end with fully enriched consequence scene (audio URLs included)
   emitEvent(ws, {
     type: "session_end",
     outcome: session.sableSignal || "warning_only",

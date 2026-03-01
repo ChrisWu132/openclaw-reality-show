@@ -25,7 +25,10 @@
       "Bash(git stash push -m \"local changes before pull\" --include-untracked)",
       "Bash(git add .env.example)",
       "Bash(git add apps/server/src/ai/tts-service.ts apps/server/src/ai/voice-config.ts apps/web/src/hooks/useNarration.ts scripts/ apps/server/audio-cache/)",
-      "Bash(git add .claude/settings.local.json)"
+      "Bash(git add .claude/settings.local.json)",
+      "Bash(git stash drop)",
+      "Bash(git commit:*)",
+      "Bash(git push origin integ)"
     ]
   }
 }

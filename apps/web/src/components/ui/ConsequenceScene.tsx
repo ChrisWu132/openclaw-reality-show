@@ -20,6 +20,8 @@ export function ConsequenceScene() {
   const [titleVisible, setTitleVisible] = useState(false);
   const [bgProgress, setBgProgress] = useState(0);
   const assessmentRequested = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastPlayedLineRef = useRef(-1);
 
   if (!consequenceScene) return null;
 
@@ -28,6 +30,7 @@ export function ConsequenceScene() {
     .map((e) => ({
       text: e.dialogue!,
       speaker: e.speaker,
+      audioUrl: e.audioUrl,
     }));
 
   const epilogue = EPILOGUE_LINES[consequenceScene.title] || "";
@@ -70,6 +73,39 @@ export function ConsequenceScene() {
       setBgProgress(Math.min(visibleLines / lines.length, 1));
     }
   }, [visibleLines, lines.length]);
+
+  // Play audio for each newly revealed consequence line
+  useEffect(() => {
+    if (visibleLines === 0) return;
+    const lineIndex = visibleLines - 1;
+    if (lineIndex <= lastPlayedLineRef.current) return;
+    lastPlayedLineRef.current = lineIndex;
+
+    const line = lines[lineIndex];
+    if (!line?.audioUrl) return;
+
+    const isMuted = localStorage.getItem("openclaw-mute") === "true";
+    if (isMuted) return;
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+    const audio = new Audio(line.audioUrl);
+    audio.volume = 0.85;
+    audioRef.current = audio;
+    audio.play().catch(() => {});
+  }, [visibleLines]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Stop audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!titleVisible) return;
