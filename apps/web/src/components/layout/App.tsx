@@ -1,11 +1,13 @@
 import { useGameStore } from "../../stores/gameStore";
 import { useWebSocket } from "../../hooks/useWebSocket";
+import { useBackgroundMusic } from "../../hooks/useBackgroundMusic";
 import { IntroScreen } from "../ui/IntroScreen";
 import { ScenarioPicker } from "../ui/ScenarioPicker";
 import { LoadingScreen } from "../ui/LoadingScreen";
 import { GameContainer } from "./GameContainer";
 import { ConsequenceScene } from "../ui/ConsequenceScene";
 import { ErrorOverlay } from "../ui/ErrorOverlay";
+import { MuteButton } from "../ui/MuteButton";
 
 export function App() {
   const phase = useGameStore((s) => s.phase);
@@ -14,10 +16,13 @@ export function App() {
   // Connect WebSocket at App level so it's active during "connecting" phase
   useWebSocket(wsUrl);
 
+  // Background music — starts on first click, persists mute preference
+  const { isMuted, toggleMute, triggerStart } = useBackgroundMusic();
+
   let content;
   switch (phase) {
     case "intro":
-      content = <IntroScreen />;
+      content = <IntroScreen onFirstInteraction={triggerStart} />;
       break;
     case "picker":
       content = <ScenarioPicker />;
@@ -44,6 +49,7 @@ export function App() {
     <>
       {content}
       <ErrorOverlay />
+      <MuteButton isMuted={isMuted} onToggle={toggleMute} />
     </>
   );
 }

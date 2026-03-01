@@ -2,7 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useGameStore } from "../../stores/gameStore";
 import { COLORS } from "../../styles/theme";
 
-export function IntroScreen() {
+interface IntroScreenProps {
+  onFirstInteraction?: () => void;
+}
+
+export function IntroScreen({ onFirstInteraction }: IntroScreenProps) {
   const setPhase = useGameStore((s) => s.setPhase);
   const [step, setStep] = useState(0);
 
@@ -19,6 +23,7 @@ export function IntroScreen() {
 
   return (
     <div
+      onClick={onFirstInteraction}
       style={{
         display: "flex",
         flexDirection: "column",
