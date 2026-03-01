@@ -18,6 +18,8 @@ export interface Session {
   systemPrompt: string;
   /** OpenClaw agent ID. When set, personality is fetched from the OpenClaw API instead of a local markdown file. */
   agentId?: string;
+  /** Formatted past-session memory block fetched from OpenClaw at session start. Injected into every situation prompt. */
+  agentMemory?: string;
   sableSignal: SableSignal | null;
   nyxSignal: boolean | null;
 }

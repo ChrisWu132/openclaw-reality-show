@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
-import { createSession as createSessionApi } from "../services/api";
+import { createSession as createSessionApi, createAgentFromMemory } from "../services/api";
 import { useGameStore } from "../stores/gameStore";
 
+export type SessionLoadingStage = "synthesizing" | "connecting" | null;
+
 export function useSession() {
-  const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState<SessionLoadingStage>(null);
   const [error, setError] = useState<string | null>(null);
 
   const setPhase = useGameStore((s) => s.setPhase);
@@ -12,11 +14,16 @@ export function useSession() {
 
   const createSession = useCallback(
     async (scenarioId: string) => {
-      setLoading(true);
+      setLoadingStage("synthesizing");
       setError(null);
 
       try {
-        const { wsUrl } = await createSessionApi(scenarioId);
+        // Step 1: synthesize agent from Claude memory (~15-30s)
+        const { agentId } = await createAgentFromMemory();
+
+        // Step 2: create the session with the memory-derived agentId
+        setLoadingStage("connecting");
+        const { wsUrl } = await createSessionApi(scenarioId, agentId);
         setWsUrl(wsUrl);
         setPhase("connecting");
       } catch (err) {
@@ -25,11 +32,13 @@ export function useSession() {
         setError(message);
         setStoreError(message);
       } finally {
-        setLoading(false);
+        setLoadingStage(null);
       }
     },
     [setPhase, setWsUrl, setStoreError],
   );
 
-  return { createSession, loading, error };
+  const loading = loadingStage !== null;
+
+  return { createSession, loading, loadingStage, error };
 }

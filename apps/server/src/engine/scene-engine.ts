@@ -15,7 +15,7 @@ import { getSessionWs } from "../ws/ws-server.js";
 import { emitEvent, emitNpcEventsWithPacing } from "../ws/ws-emitter.js";
 import { getSituationData, resolveSableSignal, detectNyxMention, getConsequenceScene } from "./script-engine.js";
 import { getCoordinatorResponse, initSystemPrompt } from "../ai/llm-client.js";
-import { loadPersonalityFromOpenClaw } from "../loaders/personality-loader.js";
+import { loadPersonalityFromOpenClaw, loadAgentMemoryFromOpenClaw } from "../loaders/personality-loader.js";
 import { buildSystemPromptFromText } from "../ai/prompt-builder.js";
 import { createLogger } from "../utils/logger.js";
 import { delay } from "../utils/delay.js";
@@ -36,9 +36,21 @@ export async function runSession(sessionId: string): Promise<void> {
   // Otherwise fall back to the local coordinator-default.md file.
   let systemPrompt: string;
   if (session.agentId) {
-    logger.info("Fetching personality from OpenClaw API", { agentId: session.agentId });
-    const personalityText = await loadPersonalityFromOpenClaw(session.agentId);
+    logger.info("Fetching personality and memory from OpenClaw API", { agentId: session.agentId });
+    const [personalityText, agentMemory] = await Promise.all([
+      loadPersonalityFromOpenClaw(session.agentId),
+      loadAgentMemoryFromOpenClaw(session.agentId),
+    ]);
     systemPrompt = buildSystemPromptFromText(personalityText);
+    session.agentMemory = agentMemory || undefined;
+    if (agentMemory) {
+      logger.info("Agent memory loaded — will be injected into every situation prompt", {
+        agentId: session.agentId,
+        memoryLength: agentMemory.length,
+      });
+    } else {
+      logger.info("No prior sessions for this agent — memory block will be omitted", { agentId: session.agentId });
+    }
   } else {
     systemPrompt = initSystemPrompt("coordinator");
   }

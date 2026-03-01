@@ -2,8 +2,13 @@ import React from "react";
 import { useSession } from "../../hooks/useSession";
 import { COLORS } from "../../styles/theme";
 
+const LOADING_MESSAGES: Record<string, string> = {
+  synthesizing: "READING YOUR MEMORY...",
+  connecting: "INITIALIZING SESSION...",
+};
+
 export function ScenarioPicker() {
-  const { createSession, loading, error } = useSession();
+  const { createSession, loading, loadingStage, error } = useSession();
 
   const handleSelect = () => {
     if (!loading) {
@@ -162,17 +167,34 @@ export function ScenarioPicker() {
         </div>
       </div>
 
-      {loading && (
-        <div
-          style={{
-            fontFamily: "'Press Start 2P', monospace",
-            fontSize: "8px",
-            color: "#4A90D9",
-            marginTop: "30px",
-            letterSpacing: "0.1em",
-          }}
-        >
-          INITIALIZING SESSION...
+      {loading && loadingStage && (
+        <div style={{ marginTop: "30px", textAlign: "center" }}>
+          <div
+            style={{
+              fontFamily: "'Press Start 2P', monospace",
+              fontSize: "8px",
+              color: "#4A90D9",
+              letterSpacing: "0.1em",
+              marginBottom: "10px",
+            }}
+          >
+            {LOADING_MESSAGES[loadingStage]}
+          </div>
+          {loadingStage === "synthesizing" && (
+            <div
+              style={{
+                fontFamily: "'Press Start 2P', monospace",
+                fontSize: "6px",
+                color: "#405060",
+                letterSpacing: "0.08em",
+                lineHeight: "2",
+              }}
+            >
+              OpenClaw is reading your memory.
+              <br />
+              This takes a moment.
+            </div>
+          )}
         </div>
       )}
       {error && (

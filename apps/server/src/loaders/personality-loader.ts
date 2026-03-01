@@ -177,6 +177,49 @@ export async function loadPersonalityFromOpenClaw(agentId: string): Promise<stri
   return body.personality;
 }
 
+/**
+ * Fetches the agent's past-session memory block from the OpenClaw API.
+ *
+ * Returns a pre-formatted markdown string ready for injection into the
+ * per-situation user message. Returns an empty string for agents with no
+ * prior sessions (first run).
+ *
+ * Result is NOT cached — called once per session at startup, stored on
+ * session.agentMemory.
+ */
+export async function loadAgentMemoryFromOpenClaw(agentId: string): Promise<string> {
+  const apiUrl = process.env.OPENCLAW_API_URL;
+  const apiKey = process.env.OPENCLAW_API_KEY;
+
+  if (!apiUrl) {
+    throw new Error("OPENCLAW_API_URL is not set. Add it to your .env file.");
+  }
+
+  const url = `${apiUrl}/agents/${agentId}/memory`;
+  logger.info("Fetching agent memory from OpenClaw API", { agentId, url });
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: apiKey ? `Bearer ${apiKey}` : "",
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`OpenClaw API returned ${res.status} for agent memory "${agentId}".`);
+  }
+
+  const body = await res.json() as { memory?: string; sessionCount?: number };
+
+  logger.info("Agent memory loaded from OpenClaw", {
+    agentId,
+    sessionCount: body.sessionCount ?? 0,
+    memoryLength: body.memory?.length ?? 0,
+  });
+
+  return body.memory ?? "";
+}
+
 export function getCachedPersonality(id: string): string {
   // Try direct cache key first
   let content = cache.get(id);

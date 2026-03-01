@@ -190,22 +190,23 @@ function buildNpcPersonalityBlock(presentNpcIds: Speaker[]): string {
  * Builds the user message for a single situation LLM call.
  *
  * The user message contains:
- *   1. The interpolated situation prompt template
- *   2. The running incident log
- *   3. NPC personality blocks for characters present in the scene
+ *   1. Cross-session agent memory (if present — past cycles from OpenClaw)
+ *   2. The interpolated situation prompt template
+ *   3. The running incident log (current session)
+ *   4. NPC personality blocks for characters present in the scene
  *
  * @param situationPromptTemplate - The prompt template with {{key}} placeholders.
  * @param incidentLog - The session's incident log entries.
  * @param presentNpcIds - Speaker IDs of characters present in this situation.
  * @param worldStateValues - Key-value pairs to interpolate into the template.
- *   Common keys: situationNumber, totalSituations, location, present,
- *   npcEvents, hallFearIndex, sableStatus, monitorNotation, contextualInstruction.
+ * @param agentMemory - Optional formatted memory block from OpenClaw (past sessions).
  */
 export function buildUserMessage(
   situationPromptTemplate: string,
   incidentLog: IncidentLogEntry[],
   presentNpcIds: Speaker[],
   worldStateValues: Record<string, string>,
+  agentMemory?: string,
 ): string {
   const interpolatedPrompt = interpolate(
     situationPromptTemplate,
@@ -219,9 +220,16 @@ export function buildUserMessage(
     incidentLogEntries: incidentLog.length,
     presentNpcs: presentNpcIds,
     interpolatedKeys: Object.keys(worldStateValues),
+    hasAgentMemory: !!agentMemory,
   });
 
-  const parts = [interpolatedPrompt, incidentLogBlock];
+  const parts: string[] = [];
+
+  if (agentMemory) {
+    parts.push(agentMemory);
+  }
+
+  parts.push(interpolatedPrompt, incidentLogBlock);
 
   if (npcBlock) {
     parts.push(npcBlock);

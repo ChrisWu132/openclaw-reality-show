@@ -7,6 +7,7 @@ import { loadAllPersonalities } from "./loaders/personality-loader.js";
 import { initLLMClient } from "./ai/llm-client.js";
 import { sessionRouter } from "./routes/session.js";
 import { scenariosRouter } from "./routes/scenarios.js";
+import { agentRouter } from "./routes/agent.js";
 import { setupWebSocketServer } from "./ws/ws-server.js";
 import { createLogger } from "./utils/logger.js";
 import { sessions } from "./engine/state-manager.js";
@@ -35,6 +36,7 @@ async function startServer(): Promise<void> {
   // REST API routes
   app.use("/api", sessionRouter);
   app.use("/api", scenariosRouter);
+  app.use("/api", agentRouter);
 
   // Health check
   app.get("/api/health", (_req, res) => {

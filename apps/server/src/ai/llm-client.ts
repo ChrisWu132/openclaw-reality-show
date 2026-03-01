@@ -122,6 +122,7 @@ export async function getCoordinatorResponse(
     session.incidentLog,
     presentNpcIds,
     worldStateValues,
+    session.agentMemory,
   );
 
   logger.info("Requesting Coordinator response", {

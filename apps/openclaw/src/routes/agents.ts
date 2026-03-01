@@ -147,6 +147,59 @@ agentsRouter.post("/agents/:agentId/sessions", (req, res) => {
 });
 
 /**
+ * GET /agents/:agentId/memory
+ * Returns a formatted summary of the agent's past sessions, suitable for
+ * injection into the Coordinator's per-situation prompt context.
+ *
+ * Only the last 10 sessions are included to keep prompt size manageable.
+ * Full incident logs are summarised — not dumped verbatim.
+ *
+ * Returns: { agentId, sessionCount, memory: string }
+ */
+agentsRouter.get("/agents/:agentId/memory", (req, res) => {
+  const agent = getAgent(req.params.agentId);
+
+  if (!agent) {
+    res.status(404).json({ error: { code: "AGENT_NOT_FOUND", message: `Agent "${req.params.agentId}" not found.` } });
+    return;
+  }
+
+  const history = agent.sessionHistory.slice(-10); // most recent 10
+
+  if (history.length === 0) {
+    res.json({ agentId: agent.id, sessionCount: 0, memory: "" });
+    return;
+  }
+
+  const lines: string[] = ["## Cross-Session Memory", ""];
+  lines.push("You have operated before. These are your prior cycles:");
+  lines.push("");
+
+  for (const [i, session] of history.entries()) {
+    const date = new Date(session.recordedAt).toISOString().slice(0, 10);
+    lines.push(`### Cycle ${i + 1} — ${session.scenario} (${date})`);
+    lines.push(`Outcome: **${session.endingKey}**`);
+    lines.push(`What happened: ${session.summary}`);
+    if (session.incidentLog.length > 0) {
+      lines.push("Decisions:");
+      for (const entry of session.incidentLog) {
+        const target = entry.target ? ` → ${entry.target}` : "";
+        lines.push(`  - Situation ${entry.situation}: ${entry.action}${target}`);
+      }
+    }
+    lines.push("");
+  }
+
+  lines.push("These past actions are part of who you are. They are immutable. They inform this cycle.");
+
+  res.json({
+    agentId: agent.id,
+    sessionCount: agent.sessionHistory.length,
+    memory: lines.join("\n"),
+  });
+});
+
+/**
  * GET /agents
  * Lists all agents (metadata only, no personality text).
  *
