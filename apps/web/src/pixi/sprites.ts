@@ -73,45 +73,66 @@ function drawHumanBody(g: Graphics, color: number): void {
 }
 
 /**
- * Draw the COORDINATOR — imposing AI entity.
- * Tall angular form with bright visor, clearly visible against dark background.
+ * Draw the COORDINATOR — imposing robotic AI entity.
+ * Fundamentally different silhouette from humans:
+ * - No skin tone, no round head — angular helmet with a single glowing visor
+ * - Broader shoulders with pointed edges (like a chevron)
+ * - Trapezoidal torso tapering down
+ * - Straight mechanical legs
  */
 function drawCoordinatorBody(g: Graphics, color: number): void {
-  // Ambient glow underneath
-  g.rect(cx - 12 * S, 0, 24 * S, 34 * S).fill({ color, alpha: 0.04 });
+  // === HEAD — angular helmet, wider at top, no human features ===
+  // Helmet main shape (wider pentagon-like)
+  g.rect(cx - 8 * S, 0, 16 * S, 11 * S).fill(0x1C1C3E);
+  // Top ridge
+  g.rect(cx - 6 * S, -1 * S, 12 * S, 2 * S).fill(0x2A2A55);
+  // Side panels (angled look via layered rects)
+  g.rect(cx - 9 * S, 2 * S, 2 * S, 7 * S).fill(0x252550);
+  g.rect(cx + 7 * S, 2 * S, 2 * S, 7 * S).fill(0x202048);
+  // VISOR — single wide horizontal slit, the defining feature
+  g.rect(cx - 6 * S, 4 * S, 12 * S, 3 * S).fill(color);
+  g.rect(cx - 6 * S, 4 * S, 12 * S, 3 * S).fill({ color: 0xFFFFFF, alpha: 0.3 });
+  // Visor glow — extends beyond helmet
+  g.rect(cx - 8 * S, 3 * S, 16 * S, 5 * S).fill({ color, alpha: 0.12 });
+  // Chin piece
+  g.rect(cx - 4 * S, 9 * S, 8 * S, 2 * S).fill(0x282850);
 
-  // Head — angular helmet
-  g.rect(cx - 7 * S, 0, 14 * S, 10 * S).fill(0x303055);
-  // Helmet edge highlight
-  g.rect(cx - 7 * S, 0, 14 * S, 1 * S).fill(0x404070);
-  g.rect(cx - 7 * S, 0, 1 * S, 10 * S).fill(0x404070);
-  g.rect(cx + 6 * S, 0, 1 * S, 10 * S).fill(0x353560);
-  // Visor — the most visible feature, bright and glowing
-  g.rect(cx - 5 * S, 4 * S, 10 * S, 3 * S).fill(color);
-  g.rect(cx - 5 * S, 4 * S, 10 * S, 3 * S).fill({ color: 0xFFFFFF, alpha: 0.35 });
-  // Visor glow halo
-  g.rect(cx - 6 * S, 3 * S, 12 * S, 5 * S).fill({ color, alpha: 0.15 });
+  // === TORSO — trapezoidal, wider at shoulders ===
+  // Main torso
+  g.rect(cx - 9 * S, 11 * S, 18 * S, 13 * S).fill(0x1A1A3D);
+  // Chest plate (lighter center)
+  g.rect(cx - 5 * S, 12 * S, 10 * S, 6 * S).fill(0x222250);
+  // Vertical center line (machine aesthetic)
+  g.rect(cx - 0.5 * S, 11 * S, 1 * S, 13 * S).fill({ color, alpha: 0.15 });
 
-  // Body — heavier, brighter than before
-  g.rect(cx - 8 * S, 10 * S, 16 * S, 14 * S).fill(0x252545);
-  // Chest plate highlight
-  g.rect(cx - 6 * S, 11 * S, 12 * S, 4 * S).fill(0x2D2D50);
-  // Shoulder pads (authority markers) — bright character color
-  g.rect(cx - 10 * S, 10 * S, 4 * S, 5 * S).fill(color);
-  g.rect(cx + 6 * S, 10 * S, 4 * S, 5 * S).fill(color);
-  // Center insignia
-  g.circle(cx, 18 * S, 2 * S).fill(color);
-  g.circle(cx, 18 * S, 3 * S).fill({ color, alpha: 0.2 });
+  // === SHOULDERS — chevron-shaped pauldrons ===
+  // Left shoulder (pointed)
+  g.rect(cx - 12 * S, 10 * S, 5 * S, 3 * S).fill(color);
+  g.rect(cx - 13 * S, 11 * S, 2 * S, 2 * S).fill(color);
+  // Right shoulder
+  g.rect(cx + 7 * S, 10 * S, 5 * S, 3 * S).fill(color);
+  g.rect(cx + 11 * S, 11 * S, 2 * S, 2 * S).fill(color);
 
-  // Legs — slightly brighter
-  g.rect(cx - 5 * S, 24 * S, 4 * S, 8 * S).fill(0x1E1E3A);
-  g.rect(cx + 1 * S, 24 * S, 4 * S, 8 * S).fill(0x1E1E3A);
+  // Insignia — glowing circle on chest
+  g.circle(cx, 16 * S, 2 * S).fill(color);
+  g.circle(cx, 16 * S, 4 * S).fill({ color, alpha: 0.1 });
+
+  // === LOWER BODY — belt + mechanical legs ===
+  // Belt
+  g.rect(cx - 7 * S, 23 * S, 14 * S, 2 * S).fill(0x303060);
+  // Legs — wider, armored look
+  g.rect(cx - 6 * S, 25 * S, 5 * S, 7 * S).fill(0x1A1A38);
+  g.rect(cx + 1 * S, 25 * S, 5 * S, 7 * S).fill(0x181836);
+  // Knee joints
+  g.rect(cx - 5 * S, 28 * S, 3 * S, 1 * S).fill(0x303060);
+  g.rect(cx + 2 * S, 28 * S, 3 * S, 1 * S).fill(0x303060);
   // Boots
-  g.rect(cx - 5 * S, 30 * S, 4 * S, 2 * S).fill(0x252545);
-  g.rect(cx + 1 * S, 30 * S, 4 * S, 2 * S).fill(0x252545);
+  g.rect(cx - 6 * S, 31 * S, 5 * S, 2 * S).fill(0x252550);
+  g.rect(cx + 1 * S, 31 * S, 5 * S, 2 * S).fill(0x232348);
 
-  // Full body outline for contrast
-  g.rect(cx - 8 * S, 10 * S, 16 * S, 14 * S).stroke({ width: 1, color, alpha: 0.25 });
+  // === OUTLINE — full body border for contrast ===
+  g.rect(cx - 9 * S, 11 * S, 18 * S, 13 * S).stroke({ width: 1, color, alpha: 0.2 });
+  g.rect(cx - 8 * S, 0, 16 * S, 11 * S).stroke({ width: 1, color, alpha: 0.15 });
 }
 
 /**
@@ -162,9 +183,9 @@ export function createCharacterSprite(id: string): CharacterSprite {
     drawCoordinatorBody(body, color as number);
     // Scale up the Coordinator to be noticeably larger than humans
     body.scale.set(COORD_SCALE);
-    // Offset so the scaled sprite stays centered on the same footprint
+    // Offset so the scaled sprite stays centered horizontally, feet grounded
     body.x = -cx * (COORD_SCALE - 1);
-    body.y = -8 * S * (COORD_SCALE - 1); // shift up so feet stay grounded
+    body.y = -12 * S * (COORD_SCALE - 1); // shift up enough so feet stay grounded
   } else if (charType === "surveillance") {
     drawMonitorBody(body, color as number);
   } else {
@@ -195,7 +216,7 @@ export function createCharacterSprite(id: string): CharacterSprite {
   nameLabel.x = cx;
   if (charType === "ai") {
     nameLabel.anchor.set(0.5, 1);
-    nameLabel.y = -14 * S; // further up due to larger body
+    nameLabel.y = -20 * S; // well above the 1.4x scaled helmet
   } else {
     nameLabel.y = SPRITE_SIZE.screenHeight + 6 * S;
   }

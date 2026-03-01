@@ -1,105 +1,102 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { useGameStore } from "../../stores/gameStore";
 
 /**
- * MonologuePanel — comic-style thought bubble inside the scene.
- * Appears near the Coordinator when reasoning is available.
- * Positioned in the top-right of the scene to avoid overlapping dialogue and sprites.
+ * MonologuePanel — thought bubble overlay inside the scene.
+ * Shows the Coordinator's inner reasoning as a persistent, scrollable bubble.
+ * No label — the italic style and position make it clear this is internal thought.
  */
 export function MonologuePanel() {
   const reasoning = useGameStore((s) => s.currentReasoning);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new reasoning arrives
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [reasoning]);
 
   if (!reasoning) return null;
-
-  // Truncate long reasoning to fit the bubble
-  const maxLen = 220;
-  const text = reasoning.length > maxLen
-    ? reasoning.slice(0, maxLen) + "..."
-    : reasoning;
 
   return (
     <div
       style={{
         position: "absolute",
-        right: "16px",
-        bottom: "80px",
-        maxWidth: "300px",
+        right: "12px",
+        bottom: "70px",
+        maxWidth: "280px",
         zIndex: 18,
-        animation: "fadeIn 0.5s ease-in",
-        pointerEvents: "none",
+        animation: "thoughtBubbleIn 0.4s ease-out",
+        pointerEvents: "auto",
       }}
     >
-      {/* Thought bubble */}
+      {/* Main bubble */}
       <div
         style={{
-          background: "rgba(8, 8, 20, 0.92)",
-          border: "1px solid rgba(74, 144, 217, 0.3)",
-          borderRadius: "12px",
-          padding: "10px 14px",
+          background: "rgba(6, 6, 18, 0.93)",
+          borderRadius: "16px 16px 16px 4px",
+          padding: "10px 13px",
           position: "relative",
-          boxShadow: "0 0 20px rgba(74, 144, 217, 0.08), inset 0 0 15px rgba(74, 144, 217, 0.03)",
+          border: "1px solid rgba(74, 144, 217, 0.2)",
+          boxShadow: "0 0 24px rgba(74, 144, 217, 0.06)",
         }}
       >
-        {/* Header */}
+        {/* Scrollable reasoning text */}
         <div
-          style={{
-            fontFamily: "'Press Start 2P', monospace",
-            fontSize: "6px",
-            color: "#d94a4a",
-            letterSpacing: "0.15em",
-            marginBottom: "6px",
-            opacity: 0.8,
-          }}
-        >
-          INNER MONOLOGUE
-        </div>
-
-        {/* Reasoning text */}
-        <div
+          ref={scrollRef}
           style={{
             fontFamily: "'Courier New', monospace",
-            fontSize: "11px",
-            color: "#b0b0cc",
-            lineHeight: "1.6",
+            fontSize: "10px",
+            color: "#9898bb",
+            lineHeight: "1.7",
             fontStyle: "italic",
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
+            maxHeight: "130px",
+            overflowY: "auto",
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(74,144,217,0.2) transparent",
           }}
         >
-          {text}
+          {reasoning}
         </div>
       </div>
 
-      {/* Thought bubble tail — small circles trailing down-left toward Coordinator */}
-      <div
-        style={{
-          position: "relative",
-          marginLeft: "30px",
-        }}
-      >
+      {/* Thought bubble tail — three circles descending left */}
+      <div style={{ position: "relative", height: "20px" }}>
         <div
           style={{
+            position: "absolute",
+            left: "16px",
+            top: "3px",
             width: "8px",
             height: "8px",
             borderRadius: "50%",
-            background: "rgba(8, 8, 20, 0.85)",
-            border: "1px solid rgba(74, 144, 217, 0.25)",
-            marginTop: "4px",
-            marginLeft: "0px",
+            background: "rgba(6, 6, 18, 0.88)",
+            border: "1px solid rgba(74, 144, 217, 0.18)",
           }}
         />
         <div
           style={{
+            position: "absolute",
+            left: "6px",
+            top: "12px",
             width: "5px",
             height: "5px",
             borderRadius: "50%",
-            background: "rgba(8, 8, 20, 0.75)",
-            border: "1px solid rgba(74, 144, 217, 0.2)",
-            marginTop: "3px",
-            marginLeft: "-6px",
+            background: "rgba(6, 6, 18, 0.8)",
+            border: "1px solid rgba(74, 144, 217, 0.14)",
           }}
         />
       </div>
+
+      <style>{`
+        @keyframes thoughtBubbleIn {
+          from { opacity: 0; transform: translateY(8px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 }
