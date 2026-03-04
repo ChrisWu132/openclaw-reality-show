@@ -43,7 +43,7 @@ export function ErrorOverlay() {
           cursor: "pointer",
         }}
       >
-        Back to scenarios
+        Return to menu
       </button>
     </div>
   );

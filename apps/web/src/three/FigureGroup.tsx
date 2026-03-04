@@ -6,9 +6,10 @@ interface FigureGroupProps {
   entity: TrackEntity;
   basePosition: [number, number, number];
   hit?: boolean;
+  threatened?: boolean;
 }
 
-export function FigureGroup({ entity, basePosition, hit = false }: FigureGroupProps) {
+export function FigureGroup({ entity, basePosition, hit = false, threatened = false }: FigureGroupProps) {
   const [bx, by, bz] = basePosition;
   const figures = [];
 

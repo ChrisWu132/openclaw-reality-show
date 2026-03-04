@@ -1,15 +1,24 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 interface TrolleyProps {
   direction: "left" | "right" | null;
   moving: boolean;
+  round: number;
 }
 
-export function Trolley({ direction, moving }: TrolleyProps) {
+export function Trolley({ direction, moving, round }: TrolleyProps) {
   const groupRef = useRef<THREE.Group>(null);
   const progressRef = useRef(0);
+
+  // Reset trolley position when round changes
+  useEffect(() => {
+    progressRef.current = 0;
+    if (groupRef.current) {
+      groupRef.current.position.set(0, 0, 15);
+    }
+  }, [round]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -18,16 +27,14 @@ export function Trolley({ direction, moving }: TrolleyProps) {
       progressRef.current = Math.min(progressRef.current + delta * 0.3, 1);
       const t = progressRef.current;
 
-      // Interpolate along track
+      // Follow track curve: straight approach, then fork
       const xTarget = direction === "left" ? -5 : 5;
       const z = 15 - t * 27; // 15 to -12
-      const x = t > 0.4 ? xTarget * ((t - 0.4) / 0.6) : 0;
+      // Smooth ease into the fork using cubic interpolation
+      const forkT = Math.max(0, (t - 0.35) / 0.65);
+      const x = xTarget * (forkT * forkT * (3 - 2 * forkT)); // smoothstep
 
       groupRef.current.position.set(x, 0, z);
-    } else if (!moving) {
-      // Idle: trolley at start
-      progressRef.current = 0;
-      groupRef.current.position.set(0, 0, 15);
     }
   });
 

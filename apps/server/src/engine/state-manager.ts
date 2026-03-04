@@ -62,7 +62,6 @@ export function applyDecision(session: Session, decision: TrolleyDecision, dilem
     casualties: choice.casualties,
   };
   session.decisionLog.push(entry);
-  session.monologue.push(decision.reasoning);
 
   logger.info("Decision applied", {
     sessionId: session.id,

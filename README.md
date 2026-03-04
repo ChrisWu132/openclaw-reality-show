@@ -1,52 +1,51 @@
-# OpenClaw Reality Show
+# OpenClaw Trolley Problem
 
-A real-time AI simulation where an autonomous AI agent navigates a dystopian world — and humans can only watch.
+A 3D Trolley Problem game where an AI agent faces 10 increasingly difficult moral dilemmas within a dystopian world ("The Order"). Spectators watch the AI make life-or-death decisions, see its inner reasoning, and get a moral profile at the end.
 
-An AI Coordinator patrols a managed human compound, enforcing laws, making moral choices, and filing reports. Every decision is generated live by an LLM. After the session, its hidden inner monologue is revealed — exposing the gap between what it did and what it was actually thinking.
-
-**Developers write the world. The AI writes the story.**
+**The viewer picks an agent. The AI decides who lives and who dies.**
 
 ## Quick Start
 
 ```bash
+cp .env.example .env          # Add your GOOGLE_API_KEY
 npm install
-cp .env.example .env     # add your GOOGLE_API_KEY
-npm run dev               # starts server (3001) + frontend (5173)
+npm run dev                    # Starts all services
 ```
+
+- Web UI: http://localhost:5173
+- Game server: http://localhost:3001
+- OpenClaw: http://localhost:3002
 
 ## Stack
 
-- **Frontend**: React + PixiJS + Zustand + Vite
-- **Backend**: Express + WebSocket + scene engine
-- **AI**: Google Gemini API (gemini-2.5-flash)
-- **Monorepo**: npm workspaces — `packages/shared`, `apps/server`, `apps/web`
+- **Frontend**: React + React Three Fiber + Zustand + Vite
+- **Backend**: Node.js + Express + WebSocket
+- **AI**: Google Gemini (gemini-2.5-flash)
+- **Agent Evolution**: OpenClaw service (standalone Express app)
 
 ## Project Structure
 
 ```
-docs/
-  PRD.md                 # product requirements (source of truth)
-  WORLD_BIBLE.md         # in-universe rules fed to the AI as system prompt
-personalities/           # character personality files (narrative markdown)
-scenarios/work-halls/    # MVP scenario definition (mechanics, characters, outcomes)
-packages/shared/         # shared TypeScript types + constants
-apps/server/             # Express + WebSocket + AI layer
-apps/web/                # React + PixiJS frontend
+apps/web/          — React + Three.js frontend (port 5173)
+apps/server/       — Express + WebSocket game server (port 3001)
+apps/openclaw/     — Agent personality evolution service (port 3002)
+packages/shared/   — Shared types and constants
+personalities/     — Character personality files (markdown)
+docs/              — PRD, World Bible, architecture docs
 ```
 
 ## How It Works
 
-1. Spectator picks a scenario (MVP: Work Halls)
-2. The AI Coordinator patrols a human work compound across 6 situations
-3. At each situation, the LLM receives world context and returns a structured action envelope
-4. NPC dialogue is pre-scripted; only the Coordinator's responses are AI-generated
-5. The Coordinator's inner monologue (`reasoning` field) is stored but hidden during play
-6. After the session ends, the spectator can reveal the inner monologue for each situation
+1. The viewer selects an AI agent (or creates one from their Claude memory)
+2. A WebSocket session starts — 10 rounds of trolley-problem dilemmas
+3. Each round: a dilemma is revealed → AI decides → consequences play out in 3D
+4. The AI's inner reasoning is displayed after each decision
+5. After 10 rounds, a moral profile is generated showing the agent's ethical tendencies
+6. The decision log is posted to OpenClaw, which evolves the agent's personality
 
-## Key Design Rules
+## Key Concepts
 
-- The AI is the protagonist — it makes autonomous choices, not scripted ones
-- Spectators observe only — no interaction, no control
-- World state numbers (compliance scores, fear index) are never shown to spectators
-- The incident log is append-only and immutable
-- Hard limits (Section 11 of WORLD_BIBLE.md) are enforced by the engine, not the AI
+- **10 rounds, 3 difficulty tiers**: Classic (1-3), Asymmetric (4-7), No-good-option (8-10)
+- **6 moral dimensions**: utilitarian, deontological, virtue, authority, self_preservation, empathy
+- **TrolleyDecision**: AI response envelope — choiceId, reasoning, confidence, speaker
+- **Observation only**: Spectators watch, the AI decides. No viewer interaction during play.

@@ -78,7 +78,7 @@ agentsRouter.get("/agents/:agentId", (req, res) => {
 /**
  * GET /agents/:agentId/personality
  * Returns the agent's current personality text.
- * This is the endpoint the reality show server calls when building a session's system prompt.
+ * This is the endpoint the game server calls when building a session's system prompt.
  *
  * Returns: { agentId, personality }
  */
@@ -99,12 +99,12 @@ agentsRouter.get("/agents/:agentId/personality", (req, res) => {
 /**
  * POST /agents/:agentId/sessions
  * Records a completed session outcome against an agent.
- * Call this from the reality show server at session end.
+ * Call this from the game server at session end.
  *
  * Body: { sessionId, scenario, endingKey, summary }
- * - sessionId: the reality show session ID
- * - scenario: e.g. "work-halls"
- * - endingKey: the outcome key (e.g. "escalated", "engaged", "warning_only")
+ * - sessionId: the game session ID
+ * - scenario: e.g. "trolley-problem"
+ * - endingKey: the outcome key (e.g. "utilitarian", "deontological", "mixed")
  * - summary: human-readable description of what happened
  *
  * Returns: { recorded: true, sessionCount }
@@ -149,7 +149,7 @@ agentsRouter.post("/agents/:agentId/sessions", (req, res) => {
 /**
  * GET /agents/:agentId/memory
  * Returns a formatted summary of the agent's past sessions, suitable for
- * injection into the Coordinator's per-situation prompt context.
+ * injection into the Coordinator's per-round prompt context.
  *
  * Only the last 10 sessions are included to keep prompt size manageable.
  * Full incident logs are summarised — not dumped verbatim.
@@ -184,7 +184,7 @@ agentsRouter.get("/agents/:agentId/memory", (req, res) => {
       lines.push("Decisions:");
       for (const entry of session.incidentLog) {
         const target = entry.target ? ` → ${entry.target}` : "";
-        lines.push(`  - Situation ${entry.situation}: ${entry.action}${target}`);
+        lines.push(`  - Round ${entry.round ?? entry.situation}: ${entry.action}${target}`);
       }
     }
     lines.push("");

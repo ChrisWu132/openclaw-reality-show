@@ -19,7 +19,9 @@ export interface EvolutionInput {
 }
 
 export interface IncidentLogEntry {
-  situation: number;
+  round?: number;
+  /** @deprecated Use `round`. Kept for backward compat with old session data. */
+  situation?: number;
   action: string;
   target?: string;
   description: string;
@@ -49,7 +51,7 @@ function formatIncidentLog(entries: IncidentLogEntry[]): string {
   return entries
     .map(
       (e) =>
-        `  Situation ${e.situation}: ${e.action}${e.target ? ` → ${e.target}` : ""} — ${e.consequence}`,
+        `  Round ${e.round ?? e.situation}: ${e.action}${e.target ? ` → ${e.target}` : ""} — ${e.consequence}`,
     )
     .join("\n");
 }

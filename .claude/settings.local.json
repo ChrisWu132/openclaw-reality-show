@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-
       "Bash(node:*)",
       "Bash(mkdir:*)",
       "Bash(npm install:*)",
@@ -20,7 +19,8 @@
       "Bash(xargs kill -9)",
       "Bash(while read pid)",
       "Bash(do taskkill //F //PID \"$pid\")",
-      "Bash(done)"
+      "Bash(done)",
+      "mcp__screen-capture-mcp__take_screenshot"
     ]
   }
 }

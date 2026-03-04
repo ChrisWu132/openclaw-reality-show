@@ -26,7 +26,6 @@ export function createInitialSession(systemPrompt: string, agentId?: string, age
     totalRounds: TOTAL_ROUNDS,
     moralProfile: createEmptyMoralProfile(),
     decisionLog: [],
-    monologue: [],
     createdAt: Date.now(),
     systemPrompt,
     agentId,

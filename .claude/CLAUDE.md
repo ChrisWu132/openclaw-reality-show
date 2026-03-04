@@ -85,6 +85,14 @@ Different agents make different decisions. After each session, the decision log 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-04: [infrastructure] Post-pivot cleanup — dead files, docs, code quality
+  - Deleted: visual-audit.mjs, governance-scripts.md, FRONTEND-UPGRADE.md, DESIGN.md, old ARCHITECTURE.md, 8 NPC personality files, validator.ts, uuid.ts
+  - Rewritten: README.md, PRD.md, ARCHITECTURE.md for 3D trolley game
+  - Updated: WORLD_BIBLE.md (replaced patrol routes with trolley protocol)
+  - Removed: monologue field from Session type, MONOLOGUE_NOT_AVAILABLE error, express-rate-limit dep, NPC loading code, dead emitNpcEventsWithPacing, unused CSS/theme vars, PRESAIGE_API_KEY from .env
+  - Fixed: OpenClaw comments (reality show → game server, situation → round)
+  - Fixed: .gitignore (added *.tsbuildinfo, screenshots/)
+  - Breaking changes: yes — monologue field removed from Session type
 - 2026-03-04: [infrastructure] Pivot from 2D reality show to 3D Trolley Problem game
   - Deleted: all PixiJS/2D code, old scenario data, work-halls, Presaige, old shared types
   - Created: dilemma-pool.ts, dilemma-selector.ts, R3F 3D scene, new UI, trolley-decision types

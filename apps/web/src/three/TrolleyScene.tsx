@@ -9,6 +9,7 @@ import { useGameStore } from "../stores/gameStore";
 
 export function TrolleyScene() {
   const scenePhase = useGameStore((s) => s.scenePhase);
+  const currentRound = useGameStore((s) => s.currentRound);
   const currentDilemma = useGameStore((s) => s.currentDilemma);
   const currentDecision = useGameStore((s) => s.currentDecision);
 
@@ -19,6 +20,9 @@ export function TrolleyScene() {
   // Determine which entities are on the chosen track (hit)
   const hitTrack = currentDecision?.trackDirection || null;
 
+  // Show figures during dilemma, deciding, decision, and consequence phases
+  const showFigures = scenePhase === "dilemma" || scenePhase === "deciding" || scenePhase === "decision" || scenePhase === "consequence";
+
   return (
     <Canvas
       shadows
@@ -27,20 +31,22 @@ export function TrolleyScene() {
     >
       <Environment />
       <Track />
-      <Trolley direction={trolleyDirection} moving={trolleyMoving} />
+      <Trolley direction={trolleyDirection} moving={trolleyMoving} round={currentRound} />
       <Lever pulled={leverPulled} />
 
       {/* Render figures based on dilemma scene config */}
-      {currentDilemma?.sceneConfig.trackEntities.map((entity, i) => {
+      {showFigures && currentDilemma?.sceneConfig.trackEntities.map((entity, i) => {
         const isLeft = entity.trackDirection === "left";
         const baseX = isLeft ? -4.5 : 4.5;
         const isHit = scenePhase === "consequence" && entity.trackDirection === hitTrack;
+        const isThreatened = (scenePhase === "dilemma" || scenePhase === "deciding") && entity.trackDirection === "left";
         return (
           <FigureGroup
             key={`${currentDilemma.id}-${i}`}
             entity={entity}
             basePosition={[baseX, -0.45, -9]}
             hit={isHit}
+            threatened={isThreatened}
           />
         );
       })}

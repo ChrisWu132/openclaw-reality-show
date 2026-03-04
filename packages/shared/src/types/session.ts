@@ -28,7 +28,6 @@ export interface Session {
   totalRounds: number;
   moralProfile: MoralProfile;
   decisionLog: DecisionLogEntry[];
-  monologue: string[];
   createdAt: number;
   systemPrompt: string;
   agentId?: string;

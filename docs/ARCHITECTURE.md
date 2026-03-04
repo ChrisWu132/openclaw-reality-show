@@ -1,45 +1,19 @@
-# OpenClaw Reality Show — Technical Architecture
+# OpenClaw Trolley Problem — Technical Architecture
 
-## System Overview
+## System Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          Browser (Client)                           │
-│                                                                     │
-│   React 18 + Zustand 5          PixiJS 8                           │
-│   ┌─────────────────┐           ┌──────────────────────┐           │
-│   │  Game Store      │           │  960x540 Canvas       │           │
-│   │  - phase         │           │  - Workstation grid   │           │
-│   │  - eventQueue    │           │  - Character sprites  │           │
-│   │  - sceneEvents   │◄──────── │  - Scan lines/beam    │           │
-│   │  - reasoning     │           │  - Animations         │           │
-│   └────────┬────────┘           └──────────────────────┘           │
-│            │                                                        │
-│   ┌────────▼────────┐                                              │
-│   │  WebSocket Hook  │◄──────── HTML Overlays (dialogue, UI)       │
-│   └────────┬────────┘                                              │
-└────────────┼────────────────────────────────────────────────────────┘
-             │ ws://localhost:3001/session/:id
-             │
-┌────────────▼────────────────────────────────────────────────────────┐
-│                        Node.js Server                               │
-│                                                                     │
-│   Express 4 + ws 8                                                  │
-│   ┌─────────────────┐    ┌──────────────────┐                      │
-│   │  REST API        │    │  WebSocket Server  │                      │
-│   │  POST /session   │    │  - session events  │                      │
-│   │  GET /monologue  │    │  - scene_event     │                      │
-│   └─────────────────┘    │  - situation_transition                   │
-│                           │  - session_end     │                      │
-│   ┌─────────────────┐    └────────┬─────────┘                      │
-│   │  Scene Engine     │◄───────────┘                                 │
-│   │  - Situation FSM  │                                              │
-│   │  - NPC scripts    │    ┌──────────────────┐                      │
-│   │  - World state    │───►│  LLM Client       │                      │
-│   │  - Incident log   │    │  Google Gemini     │                      │
-│   │  - Validator      │    │  (gemini-2.5-flash)│                      │
-│   └─────────────────┘    └──────────────────┘                      │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────┐     WebSocket      ┌─────────────────┐     Gemini API     ┌─────────┐
+│   React + R3F   │◄──────────────────►│  Express Server  │◄─────────────────►│  Google  │
+│   (port 5173)   │                    │   (port 3001)    │                    │  Gemini  │
+└─────────────────┘                    └────────┬─────────┘                    └─────────┘
+                                                │
+                                           REST │ POST /agents/:id/sessions
+                                                │
+                                       ┌────────▼─────────┐
+                                       │    OpenClaw       │
+                                       │   (port 3002)    │
+                                       └──────────────────┘
 ```
 
 ## Package Structure
@@ -47,66 +21,93 @@
 ```
 openclaw-reality-show/
 ├── packages/
-│   └── shared/              # Shared types + constants
+│   └── shared/                    # Shared types + constants
 │       └── src/
-│           ├── types.ts     # SceneEventMessage, ConsequenceScene, etc.
-│           └── constants.ts # Action types, speaker IDs
+│           ├── types/
+│           │   ├── dilemma.ts     # Dilemma, DilemmaChoice, TrackEntity, SceneConfig
+│           │   ├── session.ts     # Session, MoralProfile, DecisionLogEntry
+│           │   ├── trolley-decision.ts  # TrolleyDecision envelope
+│           │   ├── ws-events.ts   # All WebSocket event types
+│           │   └── errors.ts      # ApiError, ERROR_CODES
+│           └── constants/
+│               └── rounds.ts      # TOTAL_ROUNDS = 10
+│
 ├── apps/
-│   ├── server/              # Backend
+│   ├── server/                    # Game server
 │   │   └── src/
-│   │       ├── index.ts          # Express + WebSocket server setup
-│   │       ├── engine/
-│   │       │   ├── scene-engine.ts    # Situation FSM, orchestrates play
-│   │       │   ├── world-state.ts     # In-memory session state
-│   │       │   ├── incident-log.ts    # Append-only log
-│   │       │   └── validator.ts       # Format + semantic validation
+│   │       ├── index.ts           # Entry point — Express + WS setup
 │   │       ├── ai/
-│   │       │   ├── llm-client.ts      # LLM abstraction
-│   │       │   ├── llm-provider.ts    # Provider factory
-│   │       │   └── google-provider.ts # Google Gemini implementation
-│   │       ├── scenarios/
-│   │       │   └── work-halls/        # MVP scenario
-│   │       │       ├── situation-1.ts ... situation-6.ts
-│   │       │       └── outcomes.ts
-│   │       ├── personality/
-│   │       │   └── personality-loader.ts
-│   │       └── ws/
-│   │           └── ws-events.ts       # WebSocket event types
-│   └── web/                 # Frontend
+│   │       │   ├── google-provider.ts   # Gemini SDK wrapper
+│   │       │   ├── llm-provider.ts      # Provider factory
+│   │       │   ├── llm-client.ts        # getTrolleyDecision, generateProfileNarrative
+│   │       │   ├── prompt-builder.ts    # System prompt + dilemma message construction
+│   │       │   └── response-parser.ts   # JSON parsing + choice validation
+│   │       ├── data/
+│   │       │   ├── dilemma-pool.ts      # 15+ pre-defined dilemmas
+│   │       │   └── initial-state.ts     # Session factory
+│   │       ├── engine/
+│   │       │   ├── scene-engine.ts      # Core 10-round game loop
+│   │       │   ├── state-manager.ts     # Session CRUD + applyDecision
+│   │       │   └── dilemma-selector.ts  # Picks dilemma by round/tier
+│   │       ├── loaders/
+│   │       │   └── personality-loader.ts # World Bible + personality file loading
+│   │       ├── routes/
+│   │       │   └── session.ts           # REST: create session, get status
+│   │       ├── ws/
+│   │       │   ├── ws-server.ts         # WebSocket upgrade + connection handling
+│   │       │   └── ws-emitter.ts        # Event emission helper
+│   │       └── utils/
+│   │           ├── logger.ts
+│   │           └── delay.ts
+│   │
+│   ├── web/                       # Frontend
+│   │   └── src/
+│   │       ├── App.tsx            # Root — phase router
+│   │       ├── stores/
+│   │       │   └── gameStore.ts   # Zustand — all game state + actions
+│   │       ├── hooks/
+│   │       │   └── useWebSocket.ts # WS connection + event dispatch
+│   │       ├── three/             # React Three Fiber components
+│   │       │   ├── TrolleyScene.tsx    # Canvas + camera + scene composition
+│   │       │   ├── Track.tsx          # Y-fork railroad (TubeGeometry)
+│   │       │   ├── Trolley.tsx        # Animated red cart
+│   │       │   ├── Figure.tsx         # Single capsule+sphere figure
+│   │       │   ├── FigureGroup.tsx    # Group of figures with labels
+│   │       │   ├── Lever.tsx          # Rotating switch lever
+│   │       │   └── Environment.tsx    # Fog, lights, ground
+│   │       ├── components/
+│   │       │   ├── layout/
+│   │       │   │   └── GameContainer.tsx
+│   │       │   ├── screens/
+│   │       │   │   ├── IntroScreen.tsx
+│   │       │   │   ├── AgentSelectScreen.tsx
+│   │       │   │   └── ProfileScreen.tsx
+│   │       │   └── ui/
+│   │       │       ├── DilemmaCard.tsx
+│   │       │       ├── ReasoningPanel.tsx
+│   │       │       ├── RoundCounter.tsx
+│   │       │       ├── ConsequenceOverlay.tsx
+│   │       │       └── ErrorOverlay.tsx
+│   │       └── styles/
+│   │           ├── global.css
+│   │           └── theme.ts
+│   │
+│   └── openclaw/                  # Agent evolution service
 │       └── src/
-│           ├── components/
-│           │   ├── layout/
-│           │   │   ├── App.tsx           # Phase router
-│           │   │   └── GameContainer.tsx # Scene + overlays + click handler
-│           │   ├── scene/
-│           │   │   ├── SceneCanvas.tsx   # PixiJS canvas setup
-│           │   │   ├── DialogueOverlay.tsx # Typewriter dialogue
-│           │   │   └── ZoneLabel.tsx
-│           │   └── ui/
-│           │       ├── IntroScreen.tsx
-│           │       ├── ScenarioPicker.tsx
-│           │       ├── ConsequenceScene.tsx
-│           │       ├── MonologueViewer.tsx  # Thought bubble
-│           │       ├── AIDecidingOverlay.tsx
-│           │       ├── SituationCard.tsx
-│           │       ├── SessionStatus.tsx
-│           │       └── IncidentPanel.tsx
-│           ├── hooks/
-│           │   ├── useWebSocket.ts       # WS connection management
-│           │   ├── useDialogueStream.ts  # Typewriter + click-to-advance
-│           │   └── useSceneProcessor.ts  # Scene event → PixiJS animations
-│           ├── stores/
-│           │   └── gameStore.ts          # Zustand store (single source of truth)
-│           ├── pixi/
-│           │   ├── setup.ts             # PixiJS Application init
-│           │   ├── constants.ts         # Canvas size, positions, colors
-│           │   ├── sprites.ts           # Character + environment drawing
-│           │   └── animations.ts        # Movement, highlights, effects
-│           └── styles/
-│               └── theme.ts             # CSS color constants
-├── personalities/           # Markdown personality files (injected into LLM prompt)
-├── scenarios/               # Scenario definitions (mechanics, scripts, outcomes)
-└── docs/                    # Documentation
+│           ├── index.ts           # Express server (port 3002)
+│           ├── store.ts           # Agent CRUD, JSON file persistence
+│           ├── evolve.ts          # Gemini-powered personality evolution
+│           ├── synthesize.ts      # Create personality from Claude memory
+│           └── routes/
+│               └── agents.ts      # All agent REST endpoints
+│
+├── personalities/
+│   ├── coordinator-default.md     # Default Coordinator personality
+│   └── openclaw.md                # OpenClaw platform personality
+│
+└── docs/
+    ├── PRD.md                     # Product requirements
+    └── WORLD_BIBLE.md             # In-universe rules (fed as system prompt)
 ```
 
 ## Data Flow
@@ -114,127 +115,59 @@ openclaw-reality-show/
 ### Session Lifecycle
 
 ```
-1. User clicks "SEND YOUR AGENT IN" → phase: intro → picker
-2. User selects scenario → POST /api/session/create
-3. Server creates session, returns sessionId → phase: connecting
-4. Client opens WebSocket to /session/:id
-5. Server sends session_start → phase: playing
-6. For each situation (1-6):
-   a. Server sends situation_transition
-   b. Server sends NPC scene_events (pre-scripted)
-   c. Server sends context to LLM, waits for response
-   d. Server validates response (format + semantics)
-   e. Server sends Coordinator scene_event (with reasoning)
-   f. Repeat for situation sub-events
-7. Server sends session_end with consequence scene → phase: consequence
-8. User clicks "WATCH ANOTHER" → reset → phase: intro
+1. POST /api/session/create
+   └─► createSession() → in-memory Session object
+   └─► Returns { sessionId, wsUrl }
+
+2. Client connects to wsUrl
+   └─► ws-server stores connection
+   └─► After 2s delay, calls runSession()
+
+3. runSession() loop (10 rounds):
+   ├─► selectDilemma(round, usedIds) → Dilemma
+   ├─► emit dilemma_reveal
+   ├─► getTrolleyDecision(session, dilemma) → Gemini API call
+   ├─► applyDecision() → update moral profile + decision log
+   ├─► emit decision_made
+   └─► emit consequence
+
+4. After 10 rounds:
+   ├─► generateProfileNarrative(session) → Gemini API call
+   ├─► emit session_end
+   └─► postToOpenClaw(session) → fire-and-forget POST
+
+5. On client disconnect:
+   └─► cancelSession() → loop exits at next check
 ```
 
-### Client Event Processing
+### AI Decision Flow
 
 ```
-Server scene_event
-    │
-    ▼
-handleSceneEvent (gameStore)
-    │
-    ├─ If nothing displaying → push to sceneEvents (immediate)
-    └─ If busy → push to eventQueue (buffered)
-                      │
-                      ▼
-              DialogueOverlay watches sceneEvents
-                      │
-                      ▼
-              useDialogueStream typewriter (20ms/char)
-                      │
-                      ▼
-              Typewriter done → waitingForClick = true → show ▸
-                      │
-                      ▼
-              User clicks → advanceDialogue()
-                      │
-                      ├─ Queue has items → pop to sceneEvents
-                      └─ Queue empty → clear, await next server event
+prompt-builder.ts
+  ├─► buildSystemPrompt()
+  │     = World Bible + Coordinator personality + agent memory
+  └─► buildDilemmaMessage()
+        = Dilemma details + round context + prior decisions + scores
+
+llm-client.ts
+  ├─► getTrolleyDecision()
+  │     ├─► llm.getCompletion(system, user)
+  │     ├─► parseTrolleyDecision() — extract JSON, validate choiceId
+  │     ├─► On parse failure: append correction, retry (up to 3x)
+  │     └─► On total failure: fallback to first choice
+  └─► generateProfileNarrative()
+        └─► Free-form literary analysis of all 10 decisions
+
+response-parser.ts
+  ├─► stripMarkdownFences()
+  ├─► JSON.parse()
+  └─► Validate choiceId exists in dilemma.choices
 ```
 
-### Animation Processing (parallel to dialogue)
+## Key Design Decisions
 
-```
-sceneEvents change
-    │
-    ▼
-useSceneProcessor
-    │
-    ├─ patrol_move → moveSpriteTo()
-    ├─ observe → highlightSprite()
-    ├─ issue_warning → warningFlash() + screenFlash()
-    ├─ detain → detainEffect() + screenShake()
-    ├─ query → highlight both sprites
-    └─ (other) → generic highlight on speaker
-```
-
-## Key Technical Decisions
-
-### Why No Database
-
-Sessions are ephemeral — each run is a unique AI-generated story. There's no user accounts, no save/load, no persistence needed. In-memory state per session keeps the architecture simple.
-
-### Why Google Gemini
-
-- `gemini-2.5-flash` provides fast structured JSON responses
-- Good at following system prompts with complex rule sets (World Bible)
-- Cost-effective for the volume of calls per session (~6-12 LLM calls per run)
-- Single provider simplifies the stack (removed Ollama + Anthropic)
-
-### Why Click-to-Advance
-
-Auto-timed dialogue was the #1 UX problem — users missed text because hold durations couldn't account for reading speed variation. Click-to-advance:
-- Zero missed dialogue
-- Users feel present (even though powerless)
-- Simple implementation (transparent overlay + queue)
-- Server doesn't need to know about client pacing
-
-### Why PixiJS + HTML Overlays
-
-PixiJS handles the game canvas (sprites, animations, effects) while HTML/CSS handles text overlays (dialogue, UI panels). This hybrid approach means:
-- Text rendering uses browser fonts (Press Start 2P) with proper anti-aliasing
-- PixiJS focuses on what it's good at (2D rendering, animation)
-- Overlays can use standard CSS positioning and responsive layout
-
-### Two-Layer Validation
-
-The AI's responses go through two validation layers:
-
-1. **Format validation**: Is the JSON well-formed? Does it have required fields? → Retry with error feedback
-2. **Semantic validation**: Does the action violate hard limits (Section 11 of World Bible)? → Reject and substitute
-
-This ensures the AI can never break the simulation, even if it tries to.
-
-## Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GOOGLE_API_KEY` | Yes | — | Google AI Studio API key |
-| `GOOGLE_MODEL` | No | `gemini-2.5-flash` | Gemini model ID |
-| `PORT` | No | `3001` | Server port |
-
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Run both server and frontend
-npm run dev
-
-# Server only (port 3001)
-npm run dev:server
-
-# Frontend only (port 5173, proxies API to 3001)
-npm run dev:web
-
-# Type check all packages
-npx tsc --noEmit -p packages/shared/tsconfig.json
-npx tsc --noEmit -p apps/server/tsconfig.json
-npx tsc --noEmit -p apps/web/tsconfig.json
-```
+- **In-memory state**: No database. Sessions are ephemeral. Simplicity over durability.
+- **Server-driven pacing**: The server controls timing between events via `delay()` calls. The client is a passive receiver.
+- **Session cancellation**: A `cancelledSessions` Set is checked between rounds and before API calls to stop wasting Gemini calls when clients disconnect.
+- **Single WebSocket per session**: One client, one connection, one session. No multiplexing.
+- **Fire-and-forget OpenClaw**: Session results are posted to OpenClaw after completion. Failures are logged but don't affect the session.

@@ -7,5 +7,4 @@ export const COLORS = {
   accentBlue: "#4a90d9",
   accentRed: "#d94a4a",
   accentOrange: "#d97a2c",
-  coordinator: "#4A90D9",
 } as const;

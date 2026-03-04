@@ -4,3 +4,5 @@ dist/
 debug/
 *.log
 .vite/
+*.tsbuildinfo
+screenshots/
