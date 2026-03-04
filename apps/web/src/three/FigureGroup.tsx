@@ -6,16 +6,15 @@ interface FigureGroupProps {
   entity: TrackEntity;
   basePosition: [number, number, number];
   hit?: boolean;
-  threatened?: boolean;
 }
 
-export function FigureGroup({ entity, basePosition, hit = false, threatened = false }: FigureGroupProps) {
+export function FigureGroup({ entity, basePosition, hit = false }: FigureGroupProps) {
   const [bx, by, bz] = basePosition;
   const figures = [];
 
   for (let i = 0; i < Math.min(entity.count, 8); i++) {
-    const offsetX = (i % 3 - 1) * 0.5;
-    const offsetZ = Math.floor(i / 3) * 0.5;
+    const offsetX = (i % 3 - 1) * 0.7;
+    const offsetZ = Math.floor(i / 3) * 0.7;
     figures.push(
       <Figure
         key={i}
@@ -30,17 +29,18 @@ export function FigureGroup({ entity, basePosition, hit = false, threatened = fa
     <group>
       {figures}
       <Html
-        position={[bx, by + 1.5, bz]}
+        position={[bx, by + 2.5, bz]}
         center
         style={{
           color: "#e8e8e0",
-          fontSize: "10px",
+          fontSize: "11px",
           fontFamily: "'Press Start 2P', monospace",
           whiteSpace: "nowrap",
-          background: "rgba(0,0,0,0.6)",
-          padding: "2px 6px",
+          background: "rgba(0,0,0,0.7)",
+          padding: "3px 8px",
           borderRadius: "2px",
           pointerEvents: "none",
+          textShadow: "0 0 8px rgba(255,255,255,0.3)",
         }}
       >
         {entity.visualLabel}

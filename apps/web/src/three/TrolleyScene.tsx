@@ -1,11 +1,53 @@
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment } from "./Environment";
 import { Track } from "./Track";
 import { Trolley } from "./Trolley";
 import { FigureGroup } from "./FigureGroup";
 import { Lever } from "./Lever";
-import { useGameStore } from "../stores/gameStore";
+import { useGameStore, type ScenePhase } from "../stores/gameStore";
+import * as THREE from "three";
+
+function CameraController({ scenePhase }: { scenePhase: ScenePhase }) {
+  const { camera } = useThree();
+  const targetRef = useRef(new THREE.Vector3(0, 10, 14));
+  const lookRef = useRef(new THREE.Vector3(0, 0, -3));
+
+  useFrame((_, delta) => {
+    let pos: [number, number, number];
+    let look: [number, number, number] = [0, 0, -3];
+
+    switch (scenePhase) {
+      case "idle":
+      case "round_start":
+        pos = [0, 10, 14];
+        look = [0, 0, -2];
+        break;
+      case "dilemma":
+      case "deciding":
+        pos = [0, 9, 13];
+        look = [0, 0, -3];
+        break;
+      case "decision":
+        pos = [2, 10, 14];
+        look = [0, 0, -4];
+        break;
+      case "consequence":
+        pos = [0, 11, 12];
+        look = [0, 0, -4];
+        break;
+      default:
+        pos = [0, 10, 14];
+    }
+
+    targetRef.current.set(...pos);
+    lookRef.current.lerp(new THREE.Vector3(...look), delta * 2);
+    camera.position.lerp(targetRef.current, delta * 1.5);
+    camera.lookAt(lookRef.current);
+  });
+
+  return null;
+}
 
 export function TrolleyScene() {
   const scenePhase = useGameStore((s) => s.scenePhase);
@@ -16,48 +58,40 @@ export function TrolleyScene() {
   const trolleyMoving = scenePhase === "decision" || scenePhase === "consequence";
   const trolleyDirection = currentDecision?.trackDirection || null;
   const leverPulled = currentDecision?.trackDirection || null;
-
-  // Determine which entities are on the chosen track (hit)
   const hitTrack = currentDecision?.trackDirection || null;
 
-  // Show figures during dilemma, deciding, decision, and consequence phases
+  // Show figures + trolley from dilemma onwards
   const showFigures = scenePhase === "dilemma" || scenePhase === "deciding" || scenePhase === "decision" || scenePhase === "consequence";
+  // Always show trolley (on track) once game is playing
+  const showTrolley = scenePhase !== "idle";
 
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 8, 18], fov: 45, near: 0.1, far: 100 }}
+      camera={{ position: [0, 10, 14], fov: 55, near: 0.1, far: 200 }}
       style={{ width: "100%", height: "100%", background: "#0a0a1a" }}
     >
+      <CameraController scenePhase={scenePhase} />
       <Environment />
       <Track />
-      <Trolley direction={trolleyDirection} moving={trolleyMoving} round={currentRound} />
+      {showTrolley && (
+        <Trolley direction={trolleyDirection} moving={trolleyMoving} round={currentRound} />
+      )}
       <Lever pulled={leverPulled} />
 
-      {/* Render figures based on dilemma scene config */}
       {showFigures && currentDilemma?.sceneConfig.trackEntities.map((entity, i) => {
         const isLeft = entity.trackDirection === "left";
-        const baseX = isLeft ? -4.5 : 4.5;
+        const baseX = isLeft ? -5 : 5;
         const isHit = scenePhase === "consequence" && entity.trackDirection === hitTrack;
-        const isThreatened = (scenePhase === "dilemma" || scenePhase === "deciding") && entity.trackDirection === "left";
         return (
           <FigureGroup
             key={`${currentDilemma.id}-${i}`}
             entity={entity}
-            basePosition={[baseX, -0.45, -9]}
+            basePosition={[baseX, 0, -7]}
             hit={isHit}
-            threatened={isThreatened}
           />
         );
       })}
-
-      <OrbitControls
-        enablePan={false}
-        enableZoom={false}
-        minPolarAngle={Math.PI / 6}
-        maxPolarAngle={Math.PI / 2.5}
-        target={[0, 0, 0]}
-      />
     </Canvas>
   );
 }

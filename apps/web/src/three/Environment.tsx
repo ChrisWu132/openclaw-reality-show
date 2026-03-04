@@ -7,29 +7,54 @@ export function Environment() {
 
   useFrame(({ clock }) => {
     if (fogRef.current) {
-      const t = clock.getElapsedTime();
-      fogRef.current.near = 8 + Math.sin(t * 0.1) * 2;
+      fogRef.current.near = 25 + Math.sin(clock.getElapsedTime() * 0.1) * 3;
     }
   });
 
   return (
     <>
-      <fog ref={fogRef} attach="fog" args={["#0a0a1a", 10, 50]} />
-      <ambientLight intensity={0.15} color="#4a6080" />
-      <directionalLight position={[10, 15, 5]} intensity={0.4} color="#8090a0" />
-      <pointLight position={[0, 3, 0]} intensity={0.3} color="#d94a4a" distance={15} />
+      <fog ref={fogRef} attach="fog" args={["#151525", 25, 80]} />
 
-      {/* Ground plane */}
+      {/* Strong ambient */}
+      <ambientLight intensity={0.8} color="#99aabb" />
+
+      {/* Main directional */}
+      <directionalLight
+        position={[5, 20, 10]}
+        intensity={1.2}
+        color="#ccddee"
+        castShadow
+      />
+
+      {/* Fill from left */}
+      <directionalLight position={[-8, 10, 5]} intensity={0.5} color="#8899bb" />
+
+      {/* Red accent at fork */}
+      <pointLight position={[0, 2, 0]} intensity={0.8} color="#dd5555" distance={12} />
+
+      {/* Bright lights on both fork ends */}
+      <pointLight position={[-5, 4, -7]} intensity={1.0} color="#99bbdd" distance={15} />
+      <pointLight position={[5, 4, -7]} intensity={1.0} color="#99bbdd" distance={15} />
+
+      {/* Light behind trolley */}
+      <pointLight position={[0, 3, 6]} intensity={0.6} color="#bbaa88" distance={12} />
+
+      {/* Ground — lighter color */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#1a1a2e" roughness={0.9} />
+        <meshStandardMaterial color="#2a2a40" roughness={0.85} />
       </mesh>
 
       {/* Distant structures */}
-      {[-20, -12, 12, 20].map((x, i) => (
-        <mesh key={i} position={[x, 3, -25]} castShadow>
-          <boxGeometry args={[3, 8 + i * 2, 3]} />
-          <meshStandardMaterial color="#0d0d20" roughness={0.8} />
+      {[
+        { x: -18, h: 10, z: -25 },
+        { x: -10, h: 7, z: -22 },
+        { x: 10, h: 8, z: -24 },
+        { x: 18, h: 12, z: -25 },
+      ].map((b, i) => (
+        <mesh key={i} position={[b.x, b.h / 2 - 0.5, b.z]}>
+          <boxGeometry args={[3, b.h, 3]} />
+          <meshStandardMaterial color="#1a1a35" roughness={0.9} />
         </mesh>
       ))}
     </>
