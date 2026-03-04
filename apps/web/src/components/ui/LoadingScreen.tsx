@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { COLORS } from "../../styles/theme";
 
 const BOOT_LINES = [
-  "INITIALIZING ORDER SURVEILLANCE NETWORK...",
-  "LOADING COORDINATOR PROTOCOL v3.1...",
-  "SCANNING WORK HALL 3 — 34 SUBJECTS REGISTERED",
-  "COMPLIANCE MONITORING: ACTIVE",
-  "FEAR INDEX CALIBRATION: NOMINAL",
+  "INITIALIZING MORAL CALCULUS ENGINE...",
+  "LOADING TROLLEY SCENARIO MATRIX...",
+  "CALIBRATING DECISION FRAMEWORK v4.2...",
+  "ETHICAL WEIGHT COEFFICIENTS: LOADED",
   "CONNECTING TO SIMULATION...",
 ];
 
@@ -17,9 +16,7 @@ export function LoadingScreen() {
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     BOOT_LINES.forEach((_, i) => {
-      timers.push(
-        setTimeout(() => setVisibleLines(i + 1), 400 * (i + 1))
-      );
+      timers.push(setTimeout(() => setVisibleLines(i + 1), 400 * (i + 1)));
     });
     return () => timers.forEach(clearTimeout);
   }, []);
@@ -43,12 +40,7 @@ export function LoadingScreen() {
         background: COLORS.bgPrimary,
       }}
     >
-      <div
-        style={{
-          maxWidth: "600px",
-          padding: "40px",
-        }}
-      >
+      <div style={{ maxWidth: "600px", padding: "40px" }}>
         {BOOT_LINES.slice(0, visibleLines).map((line, i) => (
           <div
             key={i}
@@ -59,7 +51,6 @@ export function LoadingScreen() {
               marginBottom: "12px",
               letterSpacing: "0.1em",
               lineHeight: "1.8",
-              animation: "fadeIn 0.3s ease-in",
             }}
           >
             {i < visibleLines - 1 ? `[OK] ${line}` : `${line}${dots}`}

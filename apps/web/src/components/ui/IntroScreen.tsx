@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useGameStore } from "../../stores/gameStore";
 import { COLORS } from "../../styles/theme";
 
@@ -33,15 +33,15 @@ export function IntroScreen() {
         style={{
           fontFamily: "'Press Start 2P', monospace",
           fontSize: "28px",
-          color: COLORS.accentBlue,
+          color: COLORS.accentRed,
           letterSpacing: "0.2em",
-          textShadow: "0 0 30px rgba(74, 144, 217, 0.4)",
+          textShadow: "0 0 30px rgba(217, 74, 74, 0.4)",
           opacity: step >= 1 ? 1 : 0,
           transition: "opacity 1s ease-in",
           marginBottom: "40px",
         }}
       >
-        THE ORDER
+        THE TROLLEY PROBLEM
       </div>
 
       <div
@@ -57,9 +57,9 @@ export function IntroScreen() {
           marginBottom: "20px",
         }}
       >
-        A world where AI enforces the law.
+        Ten dilemmas. No right answers.
         <br />
-        Humans comply or disappear.
+        An AI at the lever.
       </div>
 
       <div
@@ -75,9 +75,9 @@ export function IntroScreen() {
           marginBottom: "20px",
         }}
       >
-        Your OpenClaw is about to enter
+        Your OpenClaw agent will decide
         <br />
-        as a Coordinator.
+        who lives and who dies.
       </div>
 
       <div
@@ -93,19 +93,17 @@ export function IntroScreen() {
           marginBottom: "50px",
         }}
       >
-        It will enforce. It will judge.
-        <br />
         You can only watch.
       </div>
 
       <button
-        onClick={() => setPhase("picker")}
+        onClick={() => setPhase("agent-select")}
         style={{
           fontFamily: "'Press Start 2P', monospace",
           fontSize: "10px",
-          color: COLORS.accentBlue,
+          color: COLORS.accentRed,
           background: "transparent",
-          border: `1px solid rgba(74, 144, 217, 0.4)`,
+          border: `1px solid rgba(217, 74, 74, 0.4)`,
           padding: "12px 28px",
           cursor: "pointer",
           letterSpacing: "0.15em",
@@ -114,12 +112,11 @@ export function IntroScreen() {
           pointerEvents: step >= 5 ? "auto" : "none",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = COLORS.accentBlue;
-          e.currentTarget.style.boxShadow =
-            "0 0 20px rgba(74, 144, 217, 0.2)";
+          e.currentTarget.style.borderColor = COLORS.accentRed;
+          e.currentTarget.style.boxShadow = "0 0 20px rgba(217, 74, 74, 0.2)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = "rgba(74, 144, 217, 0.4)";
+          e.currentTarget.style.borderColor = "rgba(217, 74, 74, 0.4)";
           e.currentTarget.style.boxShadow = "none";
         }}
       >

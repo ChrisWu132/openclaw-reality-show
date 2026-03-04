@@ -1,17 +1,16 @@
 import { useGameStore } from "../../stores/gameStore";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { IntroScreen } from "../ui/IntroScreen";
-import { ScenarioPicker } from "../ui/ScenarioPicker";
+import { AgentPicker } from "../ui/AgentPicker";
 import { LoadingScreen } from "../ui/LoadingScreen";
 import { GameContainer } from "./GameContainer";
-import { ConsequenceScene } from "../ui/ConsequenceScene";
+import { MoralProfileCard } from "../ui/MoralProfileCard";
 import { ErrorOverlay } from "../ui/ErrorOverlay";
 
 export function App() {
   const phase = useGameStore((s) => s.phase);
   const wsUrl = useGameStore((s) => s.wsUrl);
 
-  // Connect WebSocket at App level so it's active during "connecting" phase
   useWebSocket(wsUrl);
 
   let content;
@@ -19,8 +18,8 @@ export function App() {
     case "intro":
       content = <IntroScreen />;
       break;
-    case "picker":
-      content = <ScenarioPicker />;
+    case "agent-select":
+      content = <AgentPicker />;
       break;
     case "connecting":
       content = <LoadingScreen />;
@@ -28,13 +27,8 @@ export function App() {
     case "playing":
       content = <GameContainer />;
       break;
-    case "consequence":
-      content = (
-        <>
-          <GameContainer />
-          <ConsequenceScene />
-        </>
-      );
+    case "profile":
+      content = <MoralProfileCard />;
       break;
     default:
       content = <IntroScreen />;

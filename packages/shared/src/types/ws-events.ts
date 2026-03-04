@@ -1,58 +1,58 @@
-import type { ScenarioId } from "./session";
-import type { Speaker } from "./action-envelope";
+import type { ScenarioId, MoralProfile, DecisionLogEntry } from "./session";
+import type { Dilemma } from "./dilemma";
 
 export type WSEvent =
   | SessionStartEvent
-  | SituationTransitionEvent
-  | SceneEventMessage
+  | RoundStartEvent
+  | DilemmaRevealEvent
+  | DecisionMadeEvent
+  | ConsequenceEvent
   | SessionEndEvent
-  | MonologueAvailableEvent
   | ErrorEvent;
 
 export interface SessionStartEvent {
   type: "session_start";
   sessionId: string;
   scenario: ScenarioId;
-  totalSituations: number;
+  totalRounds: number;
+  agentName?: string;
 }
 
-export interface SituationTransitionEvent {
-  type: "situation_transition";
-  from: number;
-  to: number;
-  location: string;
-  label: string;
+export interface RoundStartEvent {
+  type: "round_start";
+  round: number;
+  totalRounds: number;
 }
 
-export interface SceneEventMessage {
-  type: "scene_event";
-  situation: number;
-  speaker: Speaker;
-  action: string;
-  target?: string;
-  gesture?: string;
-  dialogue?: string;
-  reasoning?: string;
+export interface DilemmaRevealEvent {
+  type: "dilemma_reveal";
+  round: number;
+  dilemma: Dilemma;
+}
+
+export interface DecisionMadeEvent {
+  type: "decision_made";
+  round: number;
+  choiceId: string;
+  choiceLabel: string;
+  reasoning: string;
+  trackDirection: "left" | "right";
+}
+
+export interface ConsequenceEvent {
+  type: "consequence";
+  round: number;
+  casualties: number;
+  sacrificeDescription: string;
+  cumulativeSaved: number;
+  cumulativeSacrificed: number;
 }
 
 export interface SessionEndEvent {
   type: "session_end";
-  outcome: SableSignal;
-  consequenceScene: ConsequenceScene;
-  nyxModifier: boolean;
-}
-
-export type SableSignal = "warning_only" | "escalated" | "engaged";
-
-export interface ConsequenceScene {
-  outcomeId: "processing_suite" | "unresolved_spark" | "quiet_patrol";
-  title: string;
-  events: SceneEventMessage[];
-}
-
-export interface MonologueAvailableEvent {
-  type: "monologue_available";
-  sessionId: string;
+  moralProfile: MoralProfile;
+  decisionLog: DecisionLogEntry[];
+  narrative: string;
 }
 
 export interface ErrorEvent {

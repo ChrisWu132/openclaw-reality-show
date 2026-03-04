@@ -8,15 +8,4 @@ export const COLORS = {
   accentRed: "#d94a4a",
   accentOrange: "#d97a2c",
   coordinator: "#4A90D9",
-  nyx: "#7A8B7A",
-  sable: "#D4A574",
-  calla: "#B8B8B8",
-  eli: "#8CB4D4",
-  monitor: "#2C6B6B",
-} as const;
-
-export const LAYOUT = {
-  canvasWidth: 960,
-  canvasHeight: 540,
-  gamePixelScale: 3,
 } as const;

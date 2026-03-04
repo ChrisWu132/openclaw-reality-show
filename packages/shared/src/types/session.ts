@@ -1,21 +1,36 @@
-import type { WorldState } from "./world-state";
-import type { IncidentLogEntry } from "./incident-log";
-import type { MonologueEntry } from "./monologue";
-import type { SableSignal } from "./ws-events";
+import type { MoralDimension } from "./dilemma";
 
-export type ScenarioId = "work-halls";
-export type SessionStatus = "created" | "running" | "ended" | "monologue";
+export type ScenarioId = "trolley-problem";
+export type SessionStatus = "created" | "running" | "ended";
+
+export interface MoralProfile {
+  scores: Record<MoralDimension, number>;
+  dominantFramework?: MoralDimension;
+  totalSaved: number;
+  totalSacrificed: number;
+}
+
+export interface DecisionLogEntry {
+  round: number;
+  dilemmaId: string;
+  dilemmaTitle: string;
+  choiceId: string;
+  choiceLabel: string;
+  reasoning: string;
+  casualties: number;
+}
 
 export interface Session {
   id: string;
   scenario: ScenarioId;
   status: SessionStatus;
-  currentSituation: number;
-  worldState: WorldState;
-  incidentLog: IncidentLogEntry[];
-  monologue: MonologueEntry[];
+  currentRound: number;
+  totalRounds: number;
+  moralProfile: MoralProfile;
+  decisionLog: DecisionLogEntry[];
+  monologue: string[];
   createdAt: number;
   systemPrompt: string;
-  sableSignal: SableSignal | null;
-  nyxSignal: boolean | null;
+  agentId?: string;
+  agentMemory?: string;
 }

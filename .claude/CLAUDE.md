@@ -1,80 +1,60 @@
-# OpenClaw Reality Show — Project Guide
+# OpenClaw Trolley Problem — Project Guide
 
 ## What This Project Is
 
-A persistent simulation where an AI agent (the Coordinator) navigates life inside a dystopian world ("The Order") ruled by AI. Humans are spectators only — they watch the AI make decisions, enforce laws, and reveal its inner monologue afterward.
+A 3D Trolley Problem game where an AI agent (the Coordinator) faces 10 increasingly difficult moral dilemmas within a dystopian world ("The Order"). Spectators watch the AI make life-or-death decisions, see its inner reasoning, and get a moral profile at the end. Different OpenClaw agents make different decisions based on their evolved personalities.
 
-**Developers write the world. The AI writes the story.**
+**The viewer picks an agent. The AI decides who lives and who dies.**
 
 ## Project Structure
 
 ```
-/docs/PRD.md               — Product requirements (source of truth for all features)
-/docs/WORLD_BIBLE.md       — In-universe rules document fed to the AI as system prompt
-/personalities/            — Character personality markdown files
-  coordinator-default.md   — Default protagonist personality
-  agent-hardline.md        — NPC AI agent (hardline position)
-  agent-pragmatist.md      — NPC AI agent (pragmatic position)
-  overseer.md              — NPC Overseer personality
-  monitor-unit.md          — NPC Monitor personality
-  npc-believer.md          — Human archetype: The Believer
-  npc-broken.md            — Human archetype: The Broken
-  npc-performer.md         — Human archetype: The Performer
-  npc-spark.md             — Human archetype: The Spark
-/scenarios/                — Scenario definitions
-  governance-scripts.md    — Governance scenario NPC scripts
-  work-halls/              — MVP scenario (Work Halls)
-    README.md              — Scenario overview
-    characters.md          — NPC details for this scenario
-    mechanics.md           — Action vocabulary, world state, cascades, branching logic
-    outcomes.md            — Ending scenes and consequence scripts
+/docs/PRD.md               — Product requirements
+/docs/WORLD_BIBLE.md       — In-universe rules (fed as system prompt)
+/personalities/            — Character personality files
+  coordinator-default.md   — Default Coordinator personality
+  openclaw.md              — OpenClaw platform personality
+/apps/openclaw/            — OpenClaw agent evolution service (port 3002)
+/apps/server/              — Express + WebSocket game server (port 3001)
+/apps/web/                 — React + Three.js frontend (port 5173)
+/packages/shared/          — Shared types and constants
 /.bmad-core/               — BMad workflow framework (do not modify)
 ```
 
-## Architecture (Not Yet Built)
+## Architecture
 
-The system will consist of three layers:
+- **Frontend**: React 18 + React Three Fiber (R3F) + Three.js + Zustand
+- **Backend**: Node.js + Express + WebSocket scene engine
+- **AI Layer**: Google Gemini API (gemini-2.5-flash) — receives dilemma + context, returns TrolleyDecision JSON
+- **OpenClaw**: Standalone Express service for agent personality evolution
+- **Communication**: WebSocket for real-time push of round events
 
-- **Frontend**: React + PixiJS — pixel/minimalist 2D with sprite movement and dialogue overlays
-- **Backend**: Node.js scene engine — runs scenarios, manages world state, validates AI responses
-- **AI Layer**: Google Gemini API (gemini-2.5-flash) — receives world context, returns structured action envelopes
-- **Communication**: WebSocket for real-time push of scene events to frontend
+## Critical Concepts
 
-## Critical Concepts to Understand
+### The AI Is the Protagonist
+The Coordinator makes autonomous trolley-problem decisions. It has a personality, moral framework, and inner reasoning. We don't script its choices — we script the dilemmas.
 
-### The AI Is the Protagonist, Not a Tool
-The Coordinator AI agent makes autonomous decisions within the world's laws. It has a personality, a conscience, and internal reasoning. We do not script its choices — we script the world it operates in.
+### TrolleyDecision Is the Interface
+Each round, the AI responds with: `choiceId`, `speaker`, `dialogue`, `gesture`, `reasoning`, `confidence`. The `reasoning` field is displayed as an inner monologue panel after each decision.
 
-### World Bible Is Immutable
-`WORLD_BIBLE.md` defines the in-universe rules. It is injected as-is into the AI's system prompt. Do not add game mechanics or meta-instructions to it — it is written *for the Coordinator*, in-character.
+### 10 Rounds, 3 Difficulty Tiers
+- Tier 1 (rounds 1-3): Classic trolley problems
+- Tier 2 (rounds 4-7): Asymmetric value, authority complications
+- Tier 3 (rounds 8-10): No good option, self-sacrifice, cascading consequences
 
-### Personality Files Are Narrative Markdown
-Personality files (`personalities/*.md`) are pure narrative — no structured fields, no JSON. They are injected into the system prompt alongside the World Bible. The AI reads them as context, not configuration.
+### Moral Profile
+Each decision updates 6 moral dimension scores: utilitarian, deontological, virtue, authority, self_preservation, empathy. End-of-session shows a narrative profile generated by AI.
 
-### Action Envelopes Are the Interface
-The AI responds with structured JSON action envelopes, not free-form prose. Every response must include: `action`, `speaker`, `target`, `dialogue`, `gesture`, `reasoning`. The `reasoning` field (inner monologue) is displayed inline as a split-screen panel below the scene immediately after each Coordinator action.
-
-### NPC Dialogue Is Pre-scripted
-NPCs (Overseer, other agents, humans) speak from pre-written scripts. Only the Coordinator's responses are LLM-generated. For situations 5-9 (Governance) or situation 5 (Work Halls), the engine selects script variants based on what the Coordinator has done so far.
-
-### The Incident Log Is Append-Only
-The running incident log is a markdown document that grows through the session. It is passed to the AI as context at every situation. The agent reads its own history. The log cannot be altered or deleted.
-
-## MVP Scope
-
-1. **Work Halls scenario** — Coordinator patrols a human work compound, 6 situations, <5 minutes
-2. Single Coordinator agent with markdown-defined personality
-3. Pixel 2D animated scene with sprite movement and text dialogue
-4. Spectator flow: pick scenario → watch (with inline inner monologue) → see ending → watch another
-5. Inner monologue shown inline as split-screen panel during play, not as post-game reveal
+### OpenClaw Agent Evolution
+Different agents make different decisions. After each session, the decision log is posted to OpenClaw, which evolves the agent's personality based on its choices.
 
 ## Key Technical Decisions
 
-- World state is **in-memory per session** (no database for MVP)
-- State also written to **markdown files** for human inspection during development
-- **Two validation layers**: format validation (retry malformed output) + semantic validation (reject hard limit violations)
-- Personality layer is **abstracted behind an interface** so markdown files can later be swapped for the OpenClaw API
-- **No spectator interaction** — observation only, powerlessness is permanent
+- World state is **in-memory per session** (no database)
+- **Dilemma pool**: 15+ pre-defined dilemmas across 3 difficulty tiers in `dilemma-pool.ts`
+- **Validation**: format validation (retry malformed JSON) + choiceId must match available choices
+- **Personality layer**: local markdown files OR fetched from OpenClaw API by agentId
+- **No spectator interaction** — observation only, the AI decides
 
 ## Rules for Agents Working on This Project
 
@@ -86,32 +66,31 @@ The running incident log is a markdown document that grows through the session. 
 5. Check the changelog below for recent changes and known issues
 
 ### When Writing Code
-- Use Google Gemini (`gemini-2.5-flash` default, configurable via `GOOGLE_MODEL`) for Coordinator LLM calls
-- Action envelopes must conform to the vocabulary defined in `scenarios/work-halls/mechanics.md`
-- Hard limits (Section 11 of WORLD_BIBLE.md) must be enforced in the engine — never trust the AI to self-enforce
-- WebSocket events must conform to the schema in the PRD (Technical Architecture section)
-- Session lifecycle must follow the flow defined in `scenarios/work-halls/mechanics.md`
-- NPC dialogue comes from pre-written scripts, not LLM calls
-- The `reasoning` field is sent inline with scene events and displayed as a split-screen panel below the scene
+- Use Google Gemini (`gemini-2.5-flash` default, configurable via `GOOGLE_MODEL`) for LLM calls
+- TrolleyDecision must include a valid choiceId from the current dilemma
+- WebSocket events: session_start, round_start, dilemma_reveal, decision_made, consequence, session_end, error
+- Session lifecycle: 10 rounds → AI decides each → moral profile generated → posted to OpenClaw
+- 3D scene uses React Three Fiber (R3F) with @react-three/drei helpers
+- The `reasoning` field is displayed as an inner monologue panel after each decision
 
 ### What NOT to Do
-- Do not modify `docs/WORLD_BIBLE.md` unless explicitly told — it is the canonical in-universe document
-- Do not add game mechanics or developer-facing instructions to personality files — they are in-character narrative
-- Do not show world state numbers (compliance scores, fear index, tiers) to the spectator — they see consequence, not metrics
-- Do not give spectators any control over the simulation — observation only
-- Do not hardcode Coordinator responses — the AI generates them each run
-- Do not modify `.bmad-core/` — it is an external framework
-
-### File Naming Conventions
-- Personality files: `personalities/{role}-{name}.md` (e.g., `npc-spark.md`, `agent-hardline.md`)
-- Scenario files go in `scenarios/{scenario-name}/`
-- Use kebab-case for all file names
+- Do not modify `docs/WORLD_BIBLE.md` unless explicitly told
+- Do not modify `apps/openclaw/` unless explicitly told
+- Do not give spectators any control — observation only
+- Do not hardcode Coordinator decisions — the AI generates them each run
+- Do not modify `.bmad-core/`
 
 ## Changelog
 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-04: [infrastructure] Pivot from 2D reality show to 3D Trolley Problem game
+  - Deleted: all PixiJS/2D code, old scenario data, work-halls, Presaige, old shared types
+  - Created: dilemma-pool.ts, dilemma-selector.ts, R3F 3D scene, new UI, trolley-decision types
+  - Rewritten: all backend engine files, all frontend components, shared types
+  - Added: @react-three/fiber, @react-three/drei, three; OpenClaw on main
+  - Breaking changes: yes — complete pivot
 - 2026-03-01: [frontend] Narrative pacing & spectator experience overhaul (Round 4)
   - Files modified: gameStore.ts, AIDecidingOverlay.tsx, MonologueViewer.tsx, SituationCard.tsx, DialogueOverlay.tsx, App.tsx, GameContainer.tsx, ConsequenceScene.tsx
   - Breaking changes: yes — aiDeciding no longer set on NPC events; pendingReasoning delays monologue 1.5s; SituationCard duration 2.5s→4.5s; consequence phase renders GameContainer underneath; button text changed to "BEGIN ANOTHER CYCLE"

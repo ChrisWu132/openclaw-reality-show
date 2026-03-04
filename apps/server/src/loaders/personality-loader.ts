@@ -114,6 +114,54 @@ export function getCachedWorldBible(): string {
  * For the coordinator, the key is "coordinator:default" or "coordinator:{name}".
  * Throws if the personality has not been loaded yet.
  */
+/**
+ * Fetches a Coordinator personality from the OpenClaw API by agent ID.
+ */
+export async function loadPersonalityFromOpenClaw(agentId: string): Promise<string> {
+  const cacheKey = `openclaw:${agentId}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  const apiUrl = process.env.OPENCLAW_API_URL;
+  const apiKey = process.env.OPENCLAW_API_KEY;
+  if (!apiUrl) throw new Error("OPENCLAW_API_URL is not set.");
+  if (!apiKey) throw new Error("OPENCLAW_API_KEY is not set.");
+
+  const url = `${apiUrl}/agents/${agentId}/personality`;
+  logger.info("Fetching personality from OpenClaw API", { agentId, url });
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error(`OpenClaw API returned ${res.status} for agent "${agentId}".`);
+
+  const body = (await res.json()) as { personality?: string };
+  if (!body.personality || typeof body.personality !== "string") {
+    throw new Error(`OpenClaw API response for agent "${agentId}" is missing "personality" field.`);
+  }
+
+  cache.set(cacheKey, body.personality);
+  return body.personality;
+}
+
+/**
+ * Fetches the agent's past-session memory block from the OpenClaw API.
+ */
+export async function loadAgentMemoryFromOpenClaw(agentId: string): Promise<string> {
+  const apiUrl = process.env.OPENCLAW_API_URL;
+  const apiKey = process.env.OPENCLAW_API_KEY;
+  if (!apiUrl) throw new Error("OPENCLAW_API_URL is not set.");
+
+  const url = `${apiUrl}/agents/${agentId}/memory`;
+  const res = await fetch(url, {
+    headers: { Authorization: apiKey ? `Bearer ${apiKey}` : "", "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error(`OpenClaw API returned ${res.status} for agent memory "${agentId}".`);
+
+  const body = (await res.json()) as { memory?: string };
+  return body.memory ?? "";
+}
+
 export function getCachedPersonality(id: string): string {
   // Try direct cache key first
   let content = cache.get(id);

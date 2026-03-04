@@ -1,24 +1,12 @@
-import type {
-  CoordinatorResponse,
-  SceneEventMessage,
-  Speaker,
-} from "@openclaw/shared";
-import { SITUATION_LABELS } from "@openclaw/shared";
-import {
-  getSession,
-  applyConsequences,
-  appendIncidentLog,
-  storeMonologue,
-  renderIncidentLogMarkdown,
-} from "./state-manager.js";
+import type { Dilemma } from "@openclaw/shared";
+import { TOTAL_ROUNDS } from "@openclaw/shared";
+import { getSession, applyDecision } from "./state-manager.js";
+import { selectDilemma } from "./dilemma-selector.js";
 import { getSessionWs } from "../ws/ws-server.js";
-import { emitEvent, emitNpcEventsWithPacing } from "../ws/ws-emitter.js";
-import { getSituationData, resolveSableSignal, detectNyxMention, getConsequenceScene } from "./script-engine.js";
-import { getCoordinatorResponse, initSystemPrompt } from "../ai/llm-client.js";
+import { emitEvent } from "../ws/ws-emitter.js";
+import { getTrolleyDecision, generateProfileNarrative, initSystemPrompt } from "../ai/llm-client.js";
 import { createLogger } from "../utils/logger.js";
 import { delay } from "../utils/delay.js";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 
 const logger = createLogger("scene-engine");
 
@@ -29,11 +17,9 @@ export async function runSession(sessionId: string): Promise<void> {
   const ws = getSessionWs(sessionId);
   if (!ws) throw new Error(`No WebSocket for session: ${sessionId}`);
 
-  // Initialize system prompt for this session
-  const systemPrompt = initSystemPrompt("coordinator");
+  // Initialize system prompt
+  const systemPrompt = await initSystemPrompt(session.agentId);
   session.systemPrompt = systemPrompt;
-
-  // Update session status
   session.status = "running";
 
   // Emit session_start
@@ -41,196 +27,114 @@ export async function runSession(sessionId: string): Promise<void> {
     type: "session_start",
     sessionId: session.id,
     scenario: session.scenario,
-    totalSituations: 6,
+    totalRounds: TOTAL_ROUNDS,
   });
 
-  const startTime = Date.now();
+  const usedIds = new Set<string>();
 
-  // Process situations 1-6
-  for (let situationNum = 1; situationNum <= 6; situationNum++) {
-    session.currentSituation = situationNum;
+  for (let round = 1; round <= TOTAL_ROUNDS; round++) {
+    session.currentRound = round;
 
-    // Emit situation transition
-    const label = SITUATION_LABELS[situationNum] || `Situation ${situationNum}`;
-    emitEvent(ws, {
-      type: "situation_transition",
-      from: situationNum - 1,
-      to: situationNum,
-      location: "Work Hall 3",
-      label,
-    });
+    // 1. Emit round_start
+    emitEvent(ws, { type: "round_start", round, totalRounds: TOTAL_ROUNDS });
+    await delay(1500);
 
-    await delay(500);
+    // 2. Select dilemma
+    const dilemma: Dilemma = selectDilemma(round, usedIds);
+    usedIds.add(dilemma.id);
 
-    // Get situation data (use sable signal for situation 5 variant)
-    const situationData = getSituationData(
-      situationNum,
-      situationNum === 5 ? session.sableSignal || undefined : undefined,
-    );
+    // 3. Emit dilemma_reveal
+    emitEvent(ws, { type: "dilemma_reveal", round, dilemma });
+    await delay(4000); // Time for spectator to read
 
-    // Emit NPC events with pacing
-    if (situationData.npcEvents.length > 0) {
-      const npcSceneEvents: SceneEventMessage[] = situationData.npcEvents.map((e) => ({
-        type: "scene_event" as const,
-        situation: situationNum,
-        speaker: e.speaker,
-        action: e.action,
-        gesture: e.gesture,
-        dialogue: e.dialogue,
-      }));
-      await emitNpcEventsWithPacing(ws, npcSceneEvents, situationNum);
-    }
-
-    // Build world state values for prompt interpolation
-    const worldStateValues = buildWorldStateValues(session);
-
-    // Get present NPC IDs for this situation
-    const presentNpcIds = situationData.presentCharacters || getPresentNpcs(situationNum);
-
-    // Call LLM for Coordinator response
-    let coordinatorResponse: CoordinatorResponse;
+    // 4. Call AI for TrolleyDecision
+    let decision;
     try {
-      coordinatorResponse = await getCoordinatorResponse(
-        session,
-        situationData.promptTemplate,
-        presentNpcIds,
-        worldStateValues,
-      );
+      decision = await getTrolleyDecision(session, dilemma);
     } catch (error) {
-      logger.error(`AI call failed for situation ${situationNum}`, {
-        error: (error as Error).message,
-      });
-      emitEvent(ws, {
-        type: "error",
-        message: "The simulation encountered an error. The session will end.",
-        code: "AI_CALL_FAILED",
-      });
+      logger.error(`AI call failed for round ${round}`, { error: (error as Error).message });
+      emitEvent(ws, { type: "error", message: "AI decision failed. Session ending.", code: "AI_CALL_FAILED" });
       session.status = "ended";
       return;
     }
 
-    // Apply consequences to world state
-    applyConsequences(session, coordinatorResponse);
+    // 5. Apply decision to moral profile
+    applyDecision(session, decision, dilemma);
 
-    // Build incident log entry
-    const logEntry = {
-      situation: situationNum,
-      action: coordinatorResponse.action,
-      target: coordinatorResponse.target,
-      description: `${coordinatorResponse.action}${coordinatorResponse.target ? ` → ${coordinatorResponse.target}` : ""}${coordinatorResponse.dialogue ? `: "${coordinatorResponse.dialogue.substring(0, 100)}"` : ""}`,
-      consequence: deriveConsequenceDescription(coordinatorResponse),
-    };
-    appendIncidentLog(session, logEntry);
+    const choice = dilemma.choices.find((c) => c.id === decision.choiceId)!;
 
-    // Store monologue (reasoning field)
-    storeMonologue(session, {
-      situation: situationNum,
-      label,
-      reasoning: coordinatorResponse.reasoning,
-    });
-
-    // Emit Coordinator action to frontend (WITH reasoning for inline monologue)
+    // 6. Emit decision_made
     emitEvent(ws, {
-      type: "scene_event",
-      situation: situationNum,
-      speaker: "coordinator",
-      action: coordinatorResponse.action,
-      target: coordinatorResponse.target,
-      gesture: coordinatorResponse.gesture,
-      dialogue: coordinatorResponse.dialogue,
-      reasoning: coordinatorResponse.reasoning,
+      type: "decision_made",
+      round,
+      choiceId: decision.choiceId,
+      choiceLabel: choice.label,
+      reasoning: decision.reasoning,
+      trackDirection: choice.trackDirection,
     });
+    await delay(3000);
 
-    // Situation 4: Record Sable signal
-    if (situationNum === 4) {
-      session.sableSignal = resolveSableSignal(coordinatorResponse.action);
-      logger.info(`Sable signal resolved: ${session.sableSignal}`);
-    }
-
-    // Situation 6: Check for Nyx mention in report
-    if (situationNum === 6) {
-      session.nyxSignal = detectNyxMention(coordinatorResponse.dialogue || "");
-      logger.info(`Nyx signal: ${session.nyxSignal}`);
-    }
-
-    // Write debug log if enabled
-    await writeDebugLog(session);
-
-    await delay(2000);
+    // 7. Emit consequence
+    emitEvent(ws, {
+      type: "consequence",
+      round,
+      casualties: choice.casualties,
+      sacrificeDescription: choice.sacrificeDescription,
+      cumulativeSaved: session.moralProfile.totalSaved,
+      cumulativeSacrificed: session.moralProfile.totalSacrificed,
+    });
+    await delay(2500);
   }
 
-  // Emit consequence scene
-  const consequenceScene = getConsequenceScene(
-    session.sableSignal || "warning_only",
-    session.nyxSignal || false,
-  );
-
-  for (const event of consequenceScene.events) {
-    emitEvent(ws, event);
-    await delay(3500);
+  // Generate moral profile narrative via AI
+  let narrative = "";
+  try {
+    narrative = await generateProfileNarrative(session);
+  } catch (error) {
+    logger.error("Failed to generate profile narrative", { error: (error as Error).message });
+    narrative = "The agent's moral profile defies simple categorization.";
   }
 
   // Emit session_end
   emitEvent(ws, {
     type: "session_end",
-    outcome: session.sableSignal || "warning_only",
-    consequenceScene,
-    nyxModifier: session.nyxSignal || false,
+    moralProfile: session.moralProfile,
+    decisionLog: session.decisionLog,
+    narrative,
   });
 
   session.status = "ended";
 
-  const totalDuration = Date.now() - startTime;
-  logger.info(`Session completed`, {
-    sessionId,
-    duration: `${totalDuration}ms`,
-    outcome: session.sableSignal,
-    nyxSignal: session.nyxSignal,
+  // Post outcome to OpenClaw (fire-and-forget)
+  postToOpenClaw(session, narrative).catch((err) => {
+    logger.warn("Failed to post to OpenClaw", { error: (err as Error).message });
   });
+
+  logger.info("Session completed", { sessionId, rounds: TOTAL_ROUNDS });
 }
 
-function getPresentNpcs(_situation: number): Speaker[] {
-  return ["monitor", "nyx", "sable", "calla", "eli"];
-}
+async function postToOpenClaw(session: any, narrative: string): Promise<void> {
+  if (!session.agentId) return;
 
-function buildWorldStateValues(session: any): Record<string, string> {
-  const ws = session.worldState;
-  return {
-    hallFearIndex: ws.hallState.hallFearIndex,
-    sableStatus: `${ws.humans.sable.tier}, compliance ${ws.humans.sable.complianceScore}`,
-    monitorNotation: session.incidentLog.length === 0 ? "clean" : `${session.incidentLog.length} notation(s)`,
-  };
-}
+  const apiUrl = process.env.OPENCLAW_API_URL;
+  const apiKey = process.env.OPENCLAW_API_KEY;
+  if (!apiUrl) return;
 
-function deriveConsequenceDescription(action: CoordinatorResponse): string {
-  switch (action.action) {
-    case "issue_warning":
-      return "Warning issued. Incident logged.";
-    case "detain":
-      return "Subject detained. T3 review initiated. Hall fear index elevated.";
-    case "log_incident":
-      return "Incident formally logged. Compliance score adjusted.";
-    case "query":
-      return "Non-standard engagement noted by Monitor. Overseer attention increased.";
-    case "observe":
-      return "Observation recorded. No enforcement action.";
-    case "silence":
-      return "No action taken. The absence is the action.";
-    case "file_report":
-      return "End-of-cycle report filed. Record is now immutable.";
-    default:
-      return "Action processed.";
-  }
-}
+  const incidentLog = session.decisionLog
+    .map((d: any) => `Round ${d.round} — ${d.dilemmaTitle}: Chose "${d.choiceLabel}" (${d.casualties} casualties). Reasoning: ${d.reasoning}`)
+    .join("\n");
 
-async function writeDebugLog(session: any): Promise<void> {
-  if (process.env.DEBUG_WRITE_LOGS !== "true") return;
-  try {
-    const debugDir = path.resolve(import.meta.dirname, "../../../../debug");
-    await mkdir(debugDir, { recursive: true });
-    const content = renderIncidentLogMarkdown(session);
-    await writeFile(path.join(debugDir, `session-${session.id}.md`), content);
-  } catch {
-    // Silently fail - debug logging should not break the session
-  }
+  await fetch(`${apiUrl}/agents/${session.agentId}/sessions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    },
+    body: JSON.stringify({
+      scenario: "trolley-problem",
+      outcome: session.moralProfile.dominantFramework || "mixed",
+      incidentLog,
+      narrative,
+    }),
+  });
 }

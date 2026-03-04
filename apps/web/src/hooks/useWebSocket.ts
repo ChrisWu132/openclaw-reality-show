@@ -19,16 +19,22 @@ export function useWebSocket(wsUrl: string | null): void {
 
       switch (event.type) {
         case "session_start":
-          state.handleSessionStart(event.sessionId, event.totalSituations);
+          state.handleSessionStart(event.sessionId, event.totalRounds);
           break;
-        case "situation_transition":
-          state.handleSituationTransition(event.to, event.location, event.label);
+        case "round_start":
+          state.handleRoundStart(event.round, event.totalRounds);
           break;
-        case "scene_event":
-          state.handleSceneEvent(event);
+        case "dilemma_reveal":
+          state.handleDilemmaReveal(event.dilemma);
+          break;
+        case "decision_made":
+          state.handleDecisionMade(event.choiceId, event.choiceLabel, event.reasoning, event.trackDirection);
+          break;
+        case "consequence":
+          state.handleConsequence(event.casualties, event.sacrificeDescription, event.cumulativeSaved, event.cumulativeSacrificed);
           break;
         case "session_end":
-          state.handleSessionEnd(event.consequenceScene, event.nyxModifier);
+          state.handleSessionEnd(event.moralProfile, event.decisionLog, event.narrative);
           break;
         case "error":
           state.setError(event.message);
@@ -37,18 +43,11 @@ export function useWebSocket(wsUrl: string | null): void {
     };
 
     ws.onclose = (e) => {
-      if (e.code === 4004 || e.code === 4009) {
-        const state = useGameStore.getState();
-        state.setError(
-          e.code === 4004
-            ? "Session not found"
-            : "Session has already ended",
-        );
+      if (e.code >= 4000) {
+        useGameStore.getState().setError("Connection lost");
       }
     };
 
-    return () => {
-      ws.close();
-    };
+    return () => ws.close();
   }, [wsUrl]);
 }

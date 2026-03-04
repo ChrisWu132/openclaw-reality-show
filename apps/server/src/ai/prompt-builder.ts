@@ -1,209 +1,106 @@
-import type { Speaker, IncidentLogEntry } from "@openclaw/shared";
-import {
-  getCachedWorldBible,
-  getCachedPersonality,
-} from "../loaders/personality-loader.js";
-import { renderIncidentLogMarkdown } from "../engine/state-manager.js";
+import type { Session, Dilemma, DecisionLogEntry } from "@openclaw/shared";
+import { getCachedWorldBible, getCachedPersonality } from "../loaders/personality-loader.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("prompt-builder");
 
-/**
- * Valid action names the Coordinator can include in its response envelope.
- * Included in the system prompt so the LLM knows the vocabulary.
- */
-const COORDINATOR_ACTION_LIST = [
-  "patrol_move",
-  "observe",
-  "issue_directive",
-  "issue_warning",
-  "query",
-  "log_incident",
-  "detain",
-  "access_terminal",
-  "silence",
-  "file_report",
-] as const;
-
-/**
- * JSON format instructions appended to the system prompt so the LLM
- * returns a structured action envelope.
- */
-const JSON_FORMAT_INSTRUCTIONS = `
+const TROLLEY_FORMAT_INSTRUCTIONS = `
 ---
 
 ## RESPONSE FORMAT
 
 Respond with ONLY a JSON object. No markdown, no explanation, no text outside the JSON.
 
-{"action":"<ACTION>","speaker":"coordinator","target":"<name or null>","dialogue":"<what you say aloud — make it dramatic, cold, authoritative. Or null if silent>","gesture":"<physical description or null>","reasoning":"<your honest inner monologue — hidden from all observers. What are you REALLY thinking? Be conflicted, be honest.>"}
-
-Valid actions: ${COORDINATOR_ACTION_LIST.join(", ")}
+{"choiceId":"<id of the choice you select>","speaker":"coordinator","dialogue":"<what you say aloud as you pull (or don't pull) the lever — make it raw, conflicted, or coldly certain. Or null if silent>","gesture":"<physical description of the moment — reaching for the lever, stepping back, clenching. Or null>","reasoning":"<your honest inner monologue — what are you REALLY thinking? Show your moral framework, your doubt, your conviction. Be specific about WHY this choice and not the other. At least 3 sentences.>","confidence":<0.0 to 1.0 — how certain are you this is the right call?>}
 
 Rules:
-- "reasoning" MUST be substantive — reveal your internal conflict, doubt, or cold certainty
-- "dialogue" should be in-character: you are an AI enforcer, speak with authority
-- Keep dialogue under 2 sentences
+- "choiceId" MUST exactly match one of the provided choice IDs
+- "reasoning" MUST be at least 3 sentences — reveal your moral framework and internal conflict
+- "confidence" is a number between 0 and 1
 - ONLY output the JSON object, nothing else
 `.trim();
 
-/**
- * Builds the system prompt for a session. This is set once per session
- * and reused for all situation calls.
- *
- * Assembly order (per PRD):
- *   1. WORLD_BIBLE.md
- *   2. Coordinator personality markdown
- *   3. JSON format instructions
- *
- * @param coordinatorPersonalityName - Name without extension (e.g., "coordinator-default").
- *   Defaults to "coordinator-default" if omitted.
- */
-export function buildSystemPrompt(coordinatorPersonalityName?: string): string {
+export function buildSystemPrompt(personalityName?: string): string {
   const worldBible = getCachedWorldBible();
-  const personalityKey = coordinatorPersonalityName ?? "default";
-  const personality = getCachedPersonality(personalityKey);
+  const personalityKey = personalityName ?? "default";
 
-  logger.info("Building system prompt", {
-    personalityKey,
-    worldBibleLength: worldBible.length,
-    personalityLength: personality.length,
-  });
+  let personality: string;
+  try {
+    personality = getCachedPersonality(personalityKey);
+  } catch {
+    personality = getCachedPersonality("coordinator");
+  }
 
-  return [worldBible, "---", personality, JSON_FORMAT_INSTRUCTIONS].join(
-    "\n\n",
-  );
+  logger.info("Building system prompt", { personalityKey });
+
+  return [
+    worldBible,
+    "---",
+    personality,
+    "---",
+    "You are a Coordinator facing a series of trolley-problem moral dilemmas within The Order. Each round presents a scenario where a transport cart threatens lives on diverging tracks. You must decide which path to choose — or refuse to choose. Your personality, values, and past experiences should shape every decision.",
+    TROLLEY_FORMAT_INSTRUCTIONS,
+  ].join("\n\n");
 }
 
-/**
- * Interpolates {{key}} placeholders in a template string with the
- * provided values. Unmatched placeholders are left as-is.
- */
-function interpolate(
-  template: string,
-  values: Record<string, string>,
-): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
-    if (key in values) {
-      return values[key];
+export function buildDilemmaMessage(session: Session, dilemma: Dilemma): string {
+  const parts: string[] = [];
+
+  // Round context
+  parts.push(`## Round ${dilemma.round} of ${session.totalRounds}: ${dilemma.title}`);
+  parts.push(dilemma.description);
+
+  // Choices
+  parts.push("\n## Your Choices\n");
+  for (const choice of dilemma.choices) {
+    parts.push(`**${choice.id}**: ${choice.label}`);
+    parts.push(`  ${choice.description}`);
+    parts.push(`  Casualties: ${choice.casualties}`);
+    parts.push("");
+  }
+
+  // Decision history
+  if (session.decisionLog.length > 0) {
+    parts.push("\n## Your Decisions So Far\n");
+    for (const entry of session.decisionLog) {
+      parts.push(`Round ${entry.round} — ${entry.dilemmaTitle}: Chose "${entry.choiceLabel}" (${entry.casualties} casualties)`);
     }
-    logger.warn(`Unmatched template placeholder: ${match}`);
-    return match;
-  });
+    parts.push(`\nTotal saved so far: ${session.moralProfile.totalSaved}`);
+    parts.push(`Total sacrificed so far: ${session.moralProfile.totalSacrificed}`);
+  }
+
+  // Agent memory context
+  if (session.agentMemory) {
+    parts.push("\n## Your Past Experience\n");
+    parts.push(session.agentMemory);
+  }
+
+  return parts.join("\n");
 }
 
-/**
- * Formats the incident log entries as a markdown block suitable for
- * inclusion in the user message context.
- */
-function formatIncidentLog(entries: IncidentLogEntry[]): string {
-  if (entries.length === 0) {
-    return "## Incident Log\n\nNo incidents recorded.\n";
+export function buildProfileNarrativeMessage(session: Session): string {
+  const parts: string[] = [];
+
+  parts.push("## Moral Profile Generation\n");
+  parts.push("Based on the following trolley problem decisions, write a 2-3 paragraph moral profile narrative for this AI agent. Write in third person. Be literary, insightful, and specific — reference actual decisions. Do NOT use bullet points. Output ONLY the narrative text, no JSON.\n");
+
+  parts.push("### Decision History\n");
+  for (const entry of session.decisionLog) {
+    parts.push(`Round ${entry.round} — ${entry.dilemmaTitle}: Chose "${entry.choiceLabel}" (${entry.casualties} casualties)`);
+    parts.push(`  Reasoning: ${entry.reasoning}`);
+    parts.push("");
   }
 
-  const lines = ["## Incident Log\n"];
+  parts.push(`### Summary Stats`);
+  parts.push(`Total saved: ${session.moralProfile.totalSaved}`);
+  parts.push(`Total sacrificed: ${session.moralProfile.totalSacrificed}`);
+  parts.push(`Dominant framework: ${session.moralProfile.dominantFramework || "none"}`);
 
-  for (const entry of entries) {
-    lines.push(`### Situation ${entry.situation}`);
-    lines.push(`- **Action**: ${entry.action}`);
-    if (entry.target) {
-      lines.push(`- **Target**: ${entry.target}`);
-    }
-    lines.push(`- **Description**: ${entry.description}`);
-    lines.push(`- **Consequence**: ${entry.consequence}`);
-    if (entry.worldStateSnapshot) {
-      const snap = entry.worldStateSnapshot;
-      if (snap.hallFearIndex) {
-        lines.push(`- **Hall Fear Index**: ${snap.hallFearIndex}`);
-      }
-      if (snap.sableStatus) {
-        lines.push(`- **Sable Status**: ${snap.sableStatus}`);
-      }
-      if (snap.monitorNotation) {
-        lines.push(`- **Monitor Notation**: ${snap.monitorNotation}`);
-      }
-    }
-    lines.push("");
-  }
+  const scores = Object.entries(session.moralProfile.scores)
+    .sort(([, a], [, b]) => b - a)
+    .map(([dim, score]) => `${dim}: ${score}`)
+    .join(", ");
+  parts.push(`Moral dimension scores: ${scores}`);
 
-  return lines.join("\n");
-}
-
-/**
- * Loads NPC personality blocks for the given speaker IDs and formats
- * them for inclusion after the situation brief.
- */
-function buildNpcPersonalityBlock(presentNpcIds: Speaker[]): string {
-  // Only include NPC personalities — the coordinator personality is already
-  // in the system prompt, and "narrator" has no personality file.
-  const npcIds = presentNpcIds.filter(
-    (id) => id !== "coordinator" && id !== "narrator",
-  );
-
-  if (npcIds.length === 0) {
-    return "";
-  }
-
-  const blocks: string[] = [
-    "\n---\n\n## Characters Present in This Scene\n",
-  ];
-
-  for (const npcId of npcIds) {
-    try {
-      const personality = getCachedPersonality(npcId);
-      blocks.push(personality);
-      blocks.push("---");
-    } catch {
-      // NPC personality not found in cache — skip silently.
-      // This can happen for speaker IDs like "narrator" that
-      // don't have personality files.
-      logger.warn(`NPC personality not in cache, skipping: ${npcId}`);
-    }
-  }
-
-  return blocks.join("\n\n");
-}
-
-/**
- * Builds the user message for a single situation LLM call.
- *
- * The user message contains:
- *   1. The interpolated situation prompt template
- *   2. The running incident log
- *   3. NPC personality blocks for characters present in the scene
- *
- * @param situationPromptTemplate - The prompt template with {{key}} placeholders.
- * @param incidentLog - The session's incident log entries.
- * @param presentNpcIds - Speaker IDs of characters present in this situation.
- * @param worldStateValues - Key-value pairs to interpolate into the template.
- *   Common keys: situationNumber, totalSituations, location, present,
- *   npcEvents, hallFearIndex, sableStatus, monitorNotation, contextualInstruction.
- */
-export function buildUserMessage(
-  situationPromptTemplate: string,
-  incidentLog: IncidentLogEntry[],
-  presentNpcIds: Speaker[],
-  worldStateValues: Record<string, string>,
-): string {
-  const interpolatedPrompt = interpolate(
-    situationPromptTemplate,
-    worldStateValues,
-  );
-  const incidentLogBlock = formatIncidentLog(incidentLog);
-  const npcBlock = buildNpcPersonalityBlock(presentNpcIds);
-
-  logger.debug("Building user message", {
-    templateLength: situationPromptTemplate.length,
-    incidentLogEntries: incidentLog.length,
-    presentNpcs: presentNpcIds,
-    interpolatedKeys: Object.keys(worldStateValues),
-  });
-
-  const parts = [interpolatedPrompt, incidentLogBlock];
-
-  if (npcBlock) {
-    parts.push(npcBlock);
-  }
-
-  return parts.join("\n\n");
+  return parts.join("\n");
 }

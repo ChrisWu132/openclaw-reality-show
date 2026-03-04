@@ -9,12 +9,12 @@ async function safeJson(res: Response): Promise<any> {
 }
 
 export async function createSession(
-  scenarioId: string,
-): Promise<{ sessionId: string; wsUrl: string; totalSituations: number }> {
+  agentId?: string,
+): Promise<{ sessionId: string; wsUrl: string; totalRounds: number }> {
   const res = await fetch("/api/session/create", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ scenario: scenarioId }),
+    body: JSON.stringify({ scenario: "trolley-problem", agentId }),
   });
   if (!res.ok) {
     const error = await safeJson(res);
@@ -25,24 +25,18 @@ export async function createSession(
   return data;
 }
 
-export async function getMonologue(
-  sessionId: string,
-): Promise<{ situation: number; label: string; reasoning: string }[]> {
-  const res = await fetch(`/api/session/${sessionId}/monologue`);
+export async function createAgentFromMemory(
+  name: string,
+): Promise<{ agentId: string; name: string }> {
+  const res = await fetch("/api/agent/from-memory", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
   if (!res.ok) {
     const error = await safeJson(res);
-    throw new Error(error?.error?.message || `Failed to fetch monologue (${res.status})`);
+    throw new Error(error?.error?.message || `Failed to create agent (${res.status})`);
   }
-  const data = await safeJson(res);
-  if (!data) throw new Error("Empty response from server");
-  return data;
-}
-
-export async function getScenarios(): Promise<
-  { id: string; name: string; description: string; enabled: boolean }[]
-> {
-  const res = await fetch("/api/scenarios");
-  if (!res.ok) throw new Error(`Failed to fetch scenarios (${res.status})`);
   const data = await safeJson(res);
   if (!data) throw new Error("Empty response from server");
   return data;

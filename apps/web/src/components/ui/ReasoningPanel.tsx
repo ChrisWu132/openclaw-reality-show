@@ -1,0 +1,45 @@
+import { useGameStore } from "../../stores/gameStore";
+import { COLORS } from "../../styles/theme";
+
+export function ReasoningPanel() {
+  const currentDecision = useGameStore((s) => s.currentDecision);
+  const scenePhase = useGameStore((s) => s.scenePhase);
+
+  if (!currentDecision || (scenePhase !== "decision" && scenePhase !== "consequence")) return null;
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: "50px",
+        right: "20px",
+        width: "300px",
+        background: "rgba(0, 0, 0, 0.85)",
+        border: "1px solid rgba(74, 144, 217, 0.3)",
+        padding: "16px",
+        fontFamily: "'Press Start 2P', monospace",
+        zIndex: 15,
+        animation: "fadeIn 0.5s ease-in",
+      }}
+    >
+      <div style={{ fontSize: "7px", color: COLORS.accentBlue, marginBottom: "6px", letterSpacing: "0.1em" }}>
+        INNER MONOLOGUE
+      </div>
+      <div style={{ fontSize: "8px", color: COLORS.accentOrange, marginBottom: "10px" }}>
+        Chose: {currentDecision.choiceLabel}
+      </div>
+      <div
+        style={{
+          fontSize: "7px",
+          color: COLORS.textSecondary,
+          lineHeight: "2",
+          fontStyle: "italic",
+          maxHeight: "200px",
+          overflow: "auto",
+        }}
+      >
+        "{currentDecision.reasoning}"
+      </div>
+    </div>
+  );
+}

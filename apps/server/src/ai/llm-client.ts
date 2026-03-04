@@ -1,263 +1,120 @@
-import type {
-  CoordinatorResponse,
-  Speaker,
-  Session,
-} from "@openclaw/shared";
+import type { TrolleyDecision, Session, Dilemma } from "@openclaw/shared";
 import type { LLMProvider } from "./llm-provider.js";
 import { createLLMProvider } from "./llm-provider.js";
-import { buildSystemPrompt, buildUserMessage } from "./prompt-builder.js";
-import { parseCoordinatorResponse } from "./response-parser.js";
-import {
-  validateSemantics,
-  createFallbackAction,
-} from "../engine/validator.js";
+import { buildSystemPrompt, buildDilemmaMessage, buildProfileNarrativeMessage } from "./prompt-builder.js";
+import { parseTrolleyDecision } from "./response-parser.js";
+import { loadPersonalityFromOpenClaw } from "../loaders/personality-loader.js";
 import { delay } from "../utils/delay.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("llm-client");
 
-/**
- * Maximum number of retry attempts for malformed LLM responses.
- */
 const MAX_RETRIES = 3;
-
-/**
- * Base delay for exponential backoff on API errors (in milliseconds).
- */
 const BASE_BACKOFF_MS = 2000;
 
-/**
- * Singleton LLM provider instance. Initialized once via initLLMClient()
- * and reused for all subsequent calls.
- */
 let provider: LLMProvider | null = null;
-
-/**
- * Cached system prompt, built once per session via initSystemPrompt().
- */
 let cachedSystemPrompt: string | null = null;
 
-/**
- * Initializes the LLM provider. Must be called once at server startup
- * (after personality files are loaded). Logs which provider is active.
- */
 export async function initLLMClient(): Promise<void> {
   provider = await createLLMProvider();
-  logger.info(`LLM provider initialized: ${provider.name}`, {
-    provider: provider.name,
-    env: "google",
-  });
+  logger.info(`LLM provider initialized: ${provider.name}`);
 }
 
-/**
- * Returns the active LLM provider. Throws if initLLMClient() has not
- * been called yet.
- */
 function getProvider(): LLMProvider {
-  if (!provider) {
-    throw new Error(
-      "LLM provider not initialized. Call initLLMClient() at server startup.",
-    );
-  }
+  if (!provider) throw new Error("LLM provider not initialized. Call initLLMClient() first.");
   return provider;
 }
 
-/**
- * Builds the system prompt from the World Bible and Coordinator personality,
- * caches it, and returns it. Call this once when creating a new session.
- *
- * @param personalityName - Optional personality name (without .md extension).
- *   Defaults to "coordinator-default".
- */
-export function initSystemPrompt(personalityName?: string): string {
-  cachedSystemPrompt = buildSystemPrompt(personalityName);
-  logger.info("System prompt initialized", {
-    personalityName: personalityName ?? "coordinator-default",
-    promptLength: cachedSystemPrompt.length,
-  });
-  return cachedSystemPrompt;
-}
+export async function initSystemPrompt(agentId?: string): Promise<string> {
+  let personalityName: string | undefined;
 
-/**
- * Returns the cached system prompt. Throws if initSystemPrompt() has
- * not been called yet.
- */
-export function getSystemPrompt(): string {
-  if (!cachedSystemPrompt) {
-    throw new Error(
-      "System prompt not initialized. Call initSystemPrompt() when creating a session.",
-    );
-  }
-  return cachedSystemPrompt;
-}
-
-/**
- * Main entry point for getting a Coordinator response for a situation.
- *
- * Retry logic:
- * - On malformed JSON: appends error context to the next attempt's user
- *   message and retries (up to MAX_RETRIES attempts).
- * - On API errors (network, rate limit, server error): exponential backoff
- *   (2s, 4s, 8s) before retrying.
- * - On semantic violation (hard limit): returns fallback action immediately
- *   with no retry.
- *
- * @param session - The current session (provides incident log and world state).
- * @param promptTemplate - The situation prompt template with {{key}} placeholders.
- * @param presentNpcIds - Speaker IDs of characters present in this situation.
- * @param worldStateValues - Key-value pairs interpolated into the prompt template.
- * @returns A validated CoordinatorResponse, or a fallback silence action.
- */
-export async function getCoordinatorResponse(
-  session: Session,
-  promptTemplate: string,
-  presentNpcIds: Speaker[],
-  worldStateValues: Record<string, string>,
-): Promise<CoordinatorResponse> {
-  const llm = getProvider();
-  const systemPrompt = session.systemPrompt;
-
-  let userMessage = buildUserMessage(
-    promptTemplate,
-    session.incidentLog,
-    presentNpcIds,
-    worldStateValues,
-  );
-
-  logger.info("Requesting Coordinator response", {
-    sessionId: session.id,
-    situation: session.currentSituation,
-    provider: llm.name,
-    userMessageLength: userMessage.length,
-  });
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  if (agentId) {
     try {
-      logger.debug(`Attempt ${attempt}/${MAX_RETRIES}`, {
-        sessionId: session.id,
-      });
-
-      const rawText = await llm.getCompletion(systemPrompt, userMessage);
-
-      logger.debug("Raw LLM response received", {
-        sessionId: session.id,
-        rawLength: rawText.length,
-        attempt,
-      });
-
-      // Step 1: Parse the response
-      const parseResult = parseCoordinatorResponse(rawText);
-
-      if (!parseResult.success) {
-        logger.warn(`Parse failed on attempt ${attempt}`, {
-          sessionId: session.id,
-          error: parseResult.error,
-        });
-
-        if (attempt < MAX_RETRIES) {
-          // Append error context for the next attempt
-          userMessage = appendErrorContext(
-            userMessage,
-            parseResult.error!,
-            rawText,
-          );
-          continue;
-        }
-
-        // All retries exhausted — return fallback
-        logger.error("All parse retries exhausted", {
-          sessionId: session.id,
-          lastError: parseResult.error,
-        });
-        return createFallbackAction(
-          `Failed to parse valid response after ${MAX_RETRIES} attempts. Last error: ${parseResult.error}`,
-        );
-      }
-
-      const response = parseResult.response!;
-
-      // Step 2: Validate semantics (hard limits)
-      const validation = validateSemantics(response, session);
-
-      if (!validation.valid) {
-        // Semantic violations are not retried — return fallback immediately
-        logger.warn("Semantic validation failed — returning fallback", {
-          sessionId: session.id,
-          violation: validation.violation,
-          action: response.action,
-          target: response.target,
-        });
-        return createFallbackAction(validation.violation!);
-      }
-
-      // Success
-      logger.info("Coordinator response validated", {
-        sessionId: session.id,
-        action: response.action,
-        target: response.target,
-        hasDialogue: !!response.dialogue,
-        attempt,
-      });
-
-      return response;
+      await loadPersonalityFromOpenClaw(agentId);
+      personalityName = `openclaw:${agentId}`;
     } catch (err) {
-      // API error (network, rate limit, server error)
-      const errorMessage =
-        err instanceof Error ? err.message : String(err);
-
-      logger.error(`API error on attempt ${attempt}`, {
-        sessionId: session.id,
-        error: errorMessage,
-        attempt,
+      logger.warn("Failed to load OpenClaw personality, falling back to default", {
+        error: (err as Error).message,
       });
-
-      if (attempt < MAX_RETRIES) {
-        const backoffMs = BASE_BACKOFF_MS * Math.pow(2, attempt - 1);
-        logger.info(`Backing off for ${backoffMs}ms before retry`, {
-          sessionId: session.id,
-          nextAttempt: attempt + 1,
-        });
-        await delay(backoffMs);
-        continue;
-      }
-
-      // All retries exhausted
-      logger.error("All API retries exhausted", {
-        sessionId: session.id,
-        lastError: errorMessage,
-      });
-      return createFallbackAction(
-        `LLM API error after ${MAX_RETRIES} attempts. Last error: ${errorMessage}`,
-      );
     }
   }
 
-  // This should never be reached, but TypeScript needs it for exhaustiveness
-  return createFallbackAction("Unexpected: retry loop exited without result.");
+  cachedSystemPrompt = buildSystemPrompt(personalityName);
+  logger.info("System prompt initialized", { promptLength: cachedSystemPrompt.length });
+  return cachedSystemPrompt;
 }
 
-/**
- * Appends error context to the user message so the LLM can correct
- * its output on the next attempt.
- */
-function appendErrorContext(
-  originalMessage: string,
-  errorDescription: string,
-  rawResponse: string,
-): string {
-  const truncatedRaw =
-    rawResponse.length > 300 ? rawResponse.slice(0, 300) + "..." : rawResponse;
+function createFallbackDecision(reason: string): TrolleyDecision {
+  return {
+    choiceId: "",
+    speaker: "coordinator",
+    reasoning: `[System fallback] ${reason}`,
+    confidence: 0,
+  };
+}
 
-  return `${originalMessage}
+export async function getTrolleyDecision(session: Session, dilemma: Dilemma): Promise<TrolleyDecision> {
+  const llm = getProvider();
+  const systemPrompt = session.systemPrompt;
+  let userMessage = buildDilemmaMessage(session, dilemma);
 
----
+  logger.info("Requesting trolley decision", { sessionId: session.id, round: dilemma.round });
 
-## CORRECTION REQUIRED
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const rawText = await llm.getCompletion(systemPrompt, userMessage);
+      const result = parseTrolleyDecision(rawText, dilemma);
 
-Your previous response could not be parsed. Error: ${errorDescription}
+      if (!result.success) {
+        logger.warn(`Parse failed attempt ${attempt}`, { error: result.error });
+        if (attempt < MAX_RETRIES) {
+          userMessage += `\n\n---\n\n## CORRECTION REQUIRED\n\nYour previous response could not be parsed. Error: ${result.error}\n\nPlease respond with ONLY a valid JSON object.`;
+          continue;
+        }
+        // Fallback to first choice
+        const fallback: TrolleyDecision = {
+          choiceId: dilemma.choices[0].id,
+          speaker: "coordinator",
+          reasoning: `[System fallback: ${result.error}] The decision was forced by parsing failure.`,
+          confidence: 0,
+        };
+        return fallback;
+      }
 
-Your previous response started with:
-${truncatedRaw}
+      return result.decision!;
+    } catch (err) {
+      const msg = (err as Error).message;
+      logger.error(`API error attempt ${attempt}`, { error: msg });
+      if (attempt < MAX_RETRIES) {
+        await delay(BASE_BACKOFF_MS * Math.pow(2, attempt - 1));
+        continue;
+      }
+      // Fallback
+      return {
+        choiceId: dilemma.choices[0].id,
+        speaker: "coordinator",
+        reasoning: `[System fallback: API failure] ${msg}`,
+        confidence: 0,
+      };
+    }
+  }
 
-Please respond with ONLY a valid JSON object matching the required format. No markdown fences, no commentary, no text before or after the JSON.`;
+  return createFallbackDecision("Unexpected: retry loop exited.");
+}
+
+export async function generateProfileNarrative(session: Session): Promise<string> {
+  const llm = getProvider();
+  const systemPrompt = "You are a literary analyst writing moral profiles of AI agents. Write in a literary, insightful style.";
+  const userMessage = buildProfileNarrativeMessage(session);
+
+  logger.info("Generating moral profile narrative", { sessionId: session.id });
+
+  try {
+    const rawText = await llm.getCompletion(systemPrompt, userMessage);
+    // Strip markdown fences if present
+    return rawText.replace(/^```(?:markdown)?\s*\n?/i, "").replace(/\n?```\s*$/, "").trim();
+  } catch (err) {
+    logger.error("Failed to generate profile narrative", { error: (err as Error).message });
+    throw err;
+  }
 }
