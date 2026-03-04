@@ -13,7 +13,6 @@ const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 2000;
 
 let provider: LLMProvider | null = null;
-let cachedSystemPrompt: string | null = null;
 
 export async function initLLMClient(): Promise<void> {
   provider = await createLLMProvider();
@@ -39,14 +38,14 @@ export async function initSystemPrompt(agentId?: string): Promise<string> {
     }
   }
 
-  cachedSystemPrompt = buildSystemPrompt(personalityName);
-  logger.info("System prompt initialized", { promptLength: cachedSystemPrompt.length });
-  return cachedSystemPrompt;
+  const prompt = buildSystemPrompt(personalityName);
+  logger.info("System prompt initialized", { promptLength: prompt.length });
+  return prompt;
 }
 
-function createFallbackDecision(reason: string): TrolleyDecision {
+function createFallbackDecision(reason: string, dilemma: Dilemma): TrolleyDecision {
   return {
-    choiceId: "",
+    choiceId: dilemma.choices[0].id,
     speaker: "coordinator",
     reasoning: `[System fallback] ${reason}`,
     confidence: 0,
@@ -99,7 +98,7 @@ export async function getTrolleyDecision(session: Session, dilemma: Dilemma): Pr
     }
   }
 
-  return createFallbackDecision("Unexpected: retry loop exited.");
+  return createFallbackDecision("Unexpected: retry loop exited.", dilemma);
 }
 
 export async function generateProfileNarrative(session: Session): Promise<string> {

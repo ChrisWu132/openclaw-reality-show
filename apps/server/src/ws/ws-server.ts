@@ -1,7 +1,7 @@
 import { WebSocketServer, type WebSocket } from "ws";
 import type { Server } from "http";
 import { getSession } from "../engine/state-manager.js";
-import { runSession } from "../engine/scene-engine.js";
+import { runSession, cancelSession } from "../engine/scene-engine.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("ws-server");
@@ -50,6 +50,7 @@ export function setupWebSocketServer(server: Server): void {
 
     ws.on("close", () => {
       sessionConnections.delete(sessionId);
+      cancelSession(sessionId);
       logger.info(`Client disconnected from session ${sessionId}`);
     });
 

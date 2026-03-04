@@ -50,6 +50,7 @@ interface GameState {
   handleDecisionMade: (choiceId: string, choiceLabel: string, reasoning: string, trackDirection: "left" | "right") => void;
   handleConsequence: (casualties: number, sacrificeDescription: string, cumulativeSaved: number, cumulativeSacrificed: number) => void;
   handleSessionEnd: (moralProfile: MoralProfile, decisionLog: DecisionLogEntry[], narrative: string) => void;
+  setScenePhase: (phase: ScenePhase) => void;
   setError: (error: string | null) => void;
   reset: () => void;
 }
@@ -110,6 +111,7 @@ export const useGameStore = create<GameState>((set) => ({
   handleSessionEnd: (moralProfile, decisionLog, narrative) =>
     set({ phase: "profile", moralProfile, decisionLog, narrative }),
 
+  setScenePhase: (scenePhase) => set({ scenePhase }),
   setError: (error) => set({ error }),
   reset: () => set({ ...initialState }),
 }));

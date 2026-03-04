@@ -27,7 +27,8 @@ sessionRouter.post("/session/create", async (req, res) => {
   }
 
   const session = createSession("", agentId, agentMemory);
-  const wsUrl = `ws://${req.headers.host}/session/${session.id}`;
+  const protocol = req.headers["x-forwarded-proto"] === "https" || req.secure ? "wss" : "ws";
+  const wsUrl = `${protocol}://${req.headers.host}/session/${session.id}`;
 
   logger.info(`Session created: ${session.id}`, { agentId });
 

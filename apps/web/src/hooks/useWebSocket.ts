@@ -1,7 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useGameStore } from "../stores/gameStore";
 
 export function useWebSocket(wsUrl: string | null): void {
+  const decidingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!wsUrl) return;
 
@@ -26,8 +28,15 @@ export function useWebSocket(wsUrl: string | null): void {
           break;
         case "dilemma_reveal":
           state.handleDilemmaReveal(event.dilemma);
+          // Transition to "deciding" after a short pause so user sees the dilemma first
+          if (decidingTimerRef.current) clearTimeout(decidingTimerRef.current);
+          decidingTimerRef.current = setTimeout(() => {
+            const s = useGameStore.getState();
+            if (s.scenePhase === "dilemma") s.setScenePhase("deciding");
+          }, 1500);
           break;
         case "decision_made":
+          if (decidingTimerRef.current) clearTimeout(decidingTimerRef.current);
           state.handleDecisionMade(event.choiceId, event.choiceLabel, event.reasoning, event.trackDirection);
           break;
         case "consequence":
@@ -42,12 +51,20 @@ export function useWebSocket(wsUrl: string | null): void {
       }
     };
 
+    ws.onerror = () => {
+      useGameStore.getState().setError("Failed to connect to simulation server");
+    };
+
     ws.onclose = (e) => {
-      if (e.code >= 4000) {
+      // 4000+ are custom server errors, 1006 is abnormal closure (network drop)
+      if (e.code >= 4000 || e.code === 1006) {
         useGameStore.getState().setError("Connection lost");
       }
     };
 
-    return () => ws.close();
+    return () => {
+      if (decidingTimerRef.current) clearTimeout(decidingTimerRef.current);
+      ws.close();
+    };
   }, [wsUrl]);
 }

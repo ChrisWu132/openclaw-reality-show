@@ -47,7 +47,7 @@ export class GoogleProvider implements LLMProvider {
       contents: [{ role: "user", parts: [{ text: userMessage }] }],
       generationConfig: {
         temperature: 0.8,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048,
         topP: 0.9,
       },
     });

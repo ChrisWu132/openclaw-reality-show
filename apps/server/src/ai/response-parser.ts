@@ -11,9 +11,18 @@ export interface ParseResult {
 
 function stripMarkdownFences(raw: string): string {
   let text = raw.trim();
-  const fenceMatch = text.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```\s*$/);
-  if (fenceMatch) text = fenceMatch[1].trim();
-  return text;
+  // Remove opening fence: ```json or ```
+  if (text.startsWith("```")) {
+    const firstNewline = text.indexOf("\n");
+    if (firstNewline !== -1) {
+      text = text.slice(firstNewline + 1);
+    }
+  }
+  // Remove closing fence
+  if (text.endsWith("```")) {
+    text = text.slice(0, text.lastIndexOf("```"));
+  }
+  return text.trim();
 }
 
 export function parseTrolleyDecision(rawText: string, dilemma: Dilemma): ParseResult {

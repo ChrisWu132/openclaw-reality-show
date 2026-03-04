@@ -14,19 +14,6 @@ const PERSONALITIES_DIR = resolve(PROJECT_ROOT, "personalities");
 const WORLD_BIBLE_PATH = resolve(PROJECT_ROOT, "docs", "WORLD_BIBLE.md");
 
 /**
- * Maps speaker/character IDs to their personality file names.
- */
-const NPC_FILE_MAP: Record<string, string> = {
-  coordinator: "coordinator-default.md",
-  nyx: "npc-performer.md",
-  sable: "npc-spark.md",
-  calla: "npc-broken.md",
-  eli: "npc-believer.md",
-  monitor: "monitor-unit.md",
-  overseer: "overseer.md",
-};
-
-/**
  * In-memory cache for loaded personality files and the World Bible.
  */
 const cache = new Map<string, string>();
@@ -44,55 +31,24 @@ export async function loadWorldBible(): Promise<string> {
 }
 
 /**
- * Loads the Coordinator personality file by name.
- * Defaults to "coordinator-default" if no name is provided.
+ * Loads the default Coordinator personality file and caches it.
  */
-export async function loadCoordinatorPersonality(name?: string): Promise<string> {
-  const fileName = name ? `${name}.md` : "coordinator-default.md";
-  const filePath = resolve(PERSONALITIES_DIR, fileName);
-  logger.info("Loading coordinator personality", { fileName, path: filePath });
+export async function loadCoordinatorPersonality(): Promise<string> {
+  const filePath = resolve(PERSONALITIES_DIR, "coordinator-default.md");
+  logger.info("Loading coordinator personality", { path: filePath });
   const content = await readFile(filePath, "utf-8");
-  cache.set(`coordinator:${name ?? "default"}`, content);
+  cache.set("coordinator:default", content);
   return content;
 }
 
 /**
- * Loads an NPC personality file by speaker ID.
- * The speaker ID must be a key in NPC_FILE_MAP.
- */
-export async function loadNpcPersonality(speakerId: string): Promise<string> {
-  const fileName = NPC_FILE_MAP[speakerId];
-  if (!fileName) {
-    throw new Error(`Unknown NPC speaker ID: "${speakerId}". Valid IDs: ${Object.keys(NPC_FILE_MAP).join(", ")}`);
-  }
-  const filePath = resolve(PERSONALITIES_DIR, fileName);
-  logger.info("Loading NPC personality", { speakerId, path: filePath });
-  const content = await readFile(filePath, "utf-8");
-  cache.set(`npc:${speakerId}`, content);
-  return content;
-}
-
-/**
- * Loads all personality files and the World Bible into the cache.
- * Returns the populated cache Map for inspection.
+ * Loads the World Bible and coordinator personality into the cache.
  */
 export async function loadAllPersonalities(): Promise<Map<string, string>> {
-  logger.info("Loading all personalities and World Bible");
-
+  logger.info("Loading personalities and World Bible");
   await loadWorldBible();
-
-  const loadPromises = Object.keys(NPC_FILE_MAP).map(async (speakerId) => {
-    try {
-      await loadNpcPersonality(speakerId);
-    } catch (err) {
-      logger.error(`Failed to load personality for "${speakerId}"`, err);
-      throw err;
-    }
-  });
-
-  await Promise.all(loadPromises);
-
-  logger.info("All personalities loaded", { count: cache.size });
+  await loadCoordinatorPersonality();
+  logger.info("Personalities loaded", { count: cache.size });
   return cache;
 }
 
@@ -108,12 +64,6 @@ export function getCachedWorldBible(): string {
   return content;
 }
 
-/**
- * Returns a cached personality by its cache key.
- * For NPCs, the key is "npc:{speakerId}" (e.g., "npc:sable").
- * For the coordinator, the key is "coordinator:default" or "coordinator:{name}".
- * Throws if the personality has not been loaded yet.
- */
 /**
  * Fetches a Coordinator personality from the OpenClaw API by agent ID.
  */
@@ -163,12 +113,7 @@ export async function loadAgentMemoryFromOpenClaw(agentId: string): Promise<stri
 }
 
 export function getCachedPersonality(id: string): string {
-  // Try direct cache key first
   let content = cache.get(id);
-  if (content) return content;
-
-  // Try NPC prefix
-  content = cache.get(`npc:${id}`);
   if (content) return content;
 
   // Try coordinator prefix
@@ -176,6 +121,6 @@ export function getCachedPersonality(id: string): string {
   if (content) return content;
 
   throw new Error(
-    `Personality "${id}" not found in cache. Call loadNpcPersonality("${id}") or loadAllPersonalities() first.`,
+    `Personality "${id}" not found in cache. Call loadAllPersonalities() first.`,
   );
 }

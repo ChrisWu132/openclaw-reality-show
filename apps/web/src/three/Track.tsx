@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
 const RAIL_COLOR = "#3a3a50";
@@ -6,10 +6,11 @@ const TIE_COLOR = "#2a1a10";
 
 function Rail({ points }: { points: THREE.Vector3[] }) {
   const curve = useMemo(() => new THREE.CatmullRomCurve3(points), [points]);
-  const geometry = useMemo(() => {
-    const tubeGeo = new THREE.TubeGeometry(curve, 32, 0.05, 8, false);
-    return tubeGeo;
-  }, [curve]);
+  const geometry = useMemo(() => new THREE.TubeGeometry(curve, 32, 0.05, 8, false), [curve]);
+
+  useEffect(() => {
+    return () => geometry.dispose();
+  }, [geometry]);
 
   return (
     <mesh geometry={geometry}>

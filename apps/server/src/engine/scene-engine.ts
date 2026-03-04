@@ -1,4 +1,4 @@
-import type { Dilemma } from "@openclaw/shared";
+import type { Dilemma, Session } from "@openclaw/shared";
 import { TOTAL_ROUNDS } from "@openclaw/shared";
 import { getSession, applyDecision } from "./state-manager.js";
 import { selectDilemma } from "./dilemma-selector.js";
@@ -9,6 +9,17 @@ import { createLogger } from "../utils/logger.js";
 import { delay } from "../utils/delay.js";
 
 const logger = createLogger("scene-engine");
+
+/** Tracks sessions that have been cancelled (e.g. client disconnected). */
+const cancelledSessions = new Set<string>();
+
+export function cancelSession(sessionId: string): void {
+  cancelledSessions.add(sessionId);
+}
+
+function isSessionCancelled(sessionId: string): boolean {
+  return cancelledSessions.has(sessionId);
+}
 
 export async function runSession(sessionId: string): Promise<void> {
   const session = getSession(sessionId);
@@ -33,11 +44,18 @@ export async function runSession(sessionId: string): Promise<void> {
   const usedIds = new Set<string>();
 
   for (let round = 1; round <= TOTAL_ROUNDS; round++) {
+    if (isSessionCancelled(sessionId)) {
+      logger.info("Session cancelled (client disconnected)", { sessionId, round });
+      session.status = "ended";
+      cancelledSessions.delete(sessionId);
+      return;
+    }
+
     session.currentRound = round;
 
     // 1. Emit round_start
     emitEvent(ws, { type: "round_start", round, totalRounds: TOTAL_ROUNDS });
-    await delay(1500);
+    await delay(800);
 
     // 2. Select dilemma
     const dilemma: Dilemma = selectDilemma(round, usedIds);
@@ -45,7 +63,14 @@ export async function runSession(sessionId: string): Promise<void> {
 
     // 3. Emit dilemma_reveal
     emitEvent(ws, { type: "dilemma_reveal", round, dilemma });
-    await delay(4000); // Time for spectator to read
+    await delay(2000); // Brief pause before AI decides
+
+    if (isSessionCancelled(sessionId)) {
+      logger.info("Session cancelled before AI call", { sessionId, round });
+      session.status = "ended";
+      cancelledSessions.delete(sessionId);
+      return;
+    }
 
     // 4. Call AI for TrolleyDecision
     let decision;
@@ -61,7 +86,13 @@ export async function runSession(sessionId: string): Promise<void> {
     // 5. Apply decision to moral profile
     applyDecision(session, decision, dilemma);
 
-    const choice = dilemma.choices.find((c) => c.id === decision.choiceId)!;
+    const choice = dilemma.choices.find((c) => c.id === decision.choiceId);
+    if (!choice) {
+      logger.error("Decision choiceId not found in dilemma", { choiceId: decision.choiceId, dilemmaId: dilemma.id });
+      emitEvent(ws, { type: "error", message: "Invalid AI decision. Session ending.", code: "INVALID_DECISION" });
+      session.status = "ended";
+      return;
+    }
 
     // 6. Emit decision_made
     emitEvent(ws, {
@@ -72,7 +103,7 @@ export async function runSession(sessionId: string): Promise<void> {
       reasoning: decision.reasoning,
       trackDirection: choice.trackDirection,
     });
-    await delay(3000);
+    await delay(1500);
 
     // 7. Emit consequence
     emitEvent(ws, {
@@ -83,7 +114,7 @@ export async function runSession(sessionId: string): Promise<void> {
       cumulativeSaved: session.moralProfile.totalSaved,
       cumulativeSacrificed: session.moralProfile.totalSacrificed,
     });
-    await delay(2500);
+    await delay(1500);
   }
 
   // Generate moral profile narrative via AI
@@ -113,7 +144,7 @@ export async function runSession(sessionId: string): Promise<void> {
   logger.info("Session completed", { sessionId, rounds: TOTAL_ROUNDS });
 }
 
-async function postToOpenClaw(session: any, narrative: string): Promise<void> {
+async function postToOpenClaw(session: Session, narrative: string): Promise<void> {
   if (!session.agentId) return;
 
   const apiUrl = process.env.OPENCLAW_API_URL;
@@ -121,7 +152,7 @@ async function postToOpenClaw(session: any, narrative: string): Promise<void> {
   if (!apiUrl) return;
 
   const incidentLog = session.decisionLog
-    .map((d: any) => `Round ${d.round} — ${d.dilemmaTitle}: Chose "${d.choiceLabel}" (${d.casualties} casualties). Reasoning: ${d.reasoning}`)
+    .map((d) => `Round ${d.round} — ${d.dilemmaTitle}: Chose "${d.choiceLabel}" (${d.casualties} casualties). Reasoning: ${d.reasoning}`)
     .join("\n");
 
   await fetch(`${apiUrl}/agents/${session.agentId}/sessions`, {
