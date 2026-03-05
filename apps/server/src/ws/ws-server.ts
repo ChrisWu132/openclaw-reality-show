@@ -1,6 +1,6 @@
 import { WebSocketServer, type WebSocket } from "ws";
 import type { Server } from "http";
-import type { ConquestWSEvent } from "@openclaw/shared";
+import type { StartupWSEvent } from "@openclaw/shared";
 import { getSession } from "../engine/state-manager.js";
 import { runSession, cancelSession } from "../engine/scene-engine.js";
 import { createLogger } from "../utils/logger.js";
@@ -15,10 +15,10 @@ export function getSessionWs(sessionId: string): WebSocket | undefined {
 }
 
 // ── Conquest game connections (1:many) ──────────────────────────
-const conquestConnections = new Map<string, Set<WebSocket>>();
+const startupConnections = new Map<string, Set<WebSocket>>();
 
-export function broadcastConquestEvent(gameId: string, event: ConquestWSEvent): void {
-  const clients = conquestConnections.get(gameId);
+export function broadcastStartupEvent(gameId: string, event: StartupWSEvent): void {
+  const clients = startupConnections.get(gameId);
   if (!clients) return;
   const data = JSON.stringify(event);
   for (const ws of clients) {
@@ -60,12 +60,12 @@ export function setupWebSocketServer(server: Server): void {
       return;
     }
 
-    // Conquest game: /conquest/:gameId
-    const conquestMatch = url.pathname.match(/^\/conquest\/(.+)$/);
-    if (conquestMatch) {
-      const gameId = conquestMatch[1];
+    // Conquest game: /startup/:gameId
+    const startupMatch = url.pathname.match(/^\/conquest\/(.+)$/);
+    if (startupMatch) {
+      const gameId = startupMatch[1];
       wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit("connection", ws, request, { type: "conquest", id: gameId });
+        wss.emit("connection", ws, request, { type: "startup", id: gameId });
       });
       return;
     }
@@ -99,27 +99,27 @@ export function setupWebSocketServer(server: Server): void {
         });
       }, 2000);
 
-    } else if (ctx.type === "conquest") {
+    } else if (ctx.type === "startup") {
       // Conquest game — 1:many
       const gameId = ctx.id;
-      if (!conquestConnections.has(gameId)) {
-        conquestConnections.set(gameId, new Set());
+      if (!startupConnections.has(gameId)) {
+        startupConnections.set(gameId, new Set());
       }
-      conquestConnections.get(gameId)!.add(ws);
-      logger.info(`Conquest spectator connected for game ${gameId}`);
+      startupConnections.get(gameId)!.add(ws);
+      logger.info(`Startup spectator connected for game ${gameId}`);
 
       ws.on("close", () => {
-        const clients = conquestConnections.get(gameId);
+        const clients = startupConnections.get(gameId);
         if (clients) {
           clients.delete(ws);
-          if (clients.size === 0) conquestConnections.delete(gameId);
+          if (clients.size === 0) startupConnections.delete(gameId);
         }
-        logger.info(`Conquest spectator disconnected from game ${gameId}`);
+        logger.info(`Startup spectator disconnected from game ${gameId}`);
       });
 
       ws.on("error", (err) => {
-        logger.error(`Conquest WS error for game ${gameId}`, { error: err.message });
-        conquestConnections.get(gameId)?.delete(ws);
+        logger.error(`Startup WS error for game ${gameId}`, { error: err.message });
+        startupConnections.get(gameId)?.delete(ws);
       });
     }
   });

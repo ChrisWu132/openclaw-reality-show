@@ -1,10 +1,10 @@
-import type { TrolleyDecision, Session, Dilemma, ConquestAction, ConquestGame } from "@openclaw/shared";
+import type { TrolleyDecision, Session, Dilemma, StartupAction, StartupGame, MarketEvent } from "@openclaw/shared";
 import type { LLMProvider } from "./llm-provider.js";
 import { createLLMProvider } from "./llm-provider.js";
 import { buildSystemPrompt, buildDilemmaMessage, buildProfileNarrativeMessage } from "./prompt-builder.js";
-import { buildConquestSystemPrompt, buildConquestTurnMessage } from "./conquest-prompt-builder.js";
+import { buildStartupSystemPrompt, buildStartupTurnMessage } from "./startup-prompt-builder.js";
 import { parseTrolleyDecision } from "./response-parser.js";
-import { parseConquestAction } from "./conquest-response-parser.js";
+import { parseStartupAction } from "./startup-response-parser.js";
 import { loadPersonalityFromOpenClaw, getCachedPersonality } from "../loaders/personality-loader.js";
 import { delay } from "../utils/delay.js";
 import { createLogger } from "../utils/logger.js";
@@ -49,7 +49,7 @@ function createFallbackDecision(reason: string, dilemma: Dilemma): TrolleyDecisi
   return {
     choiceId: dilemma.choices[0].id,
     speaker: "coordinator",
-    reasoning: `[System fallback] ${reason}`,
+    reasoning: "The calculus of lives defies resolution. The lever falls where gravity wills it.",
     confidence: 0,
   };
 }
@@ -76,7 +76,7 @@ export async function getTrolleyDecision(session: Session, dilemma: Dilemma): Pr
         const fallback: TrolleyDecision = {
           choiceId: dilemma.choices[0].id,
           speaker: "coordinator",
-          reasoning: `[System fallback: ${result.error}] The decision was forced by parsing failure.`,
+          reasoning: "The weight of this decision overwhelms all moral calculation. In the absence of certainty, the only path is the one already set in motion.",
           confidence: 0,
         };
         return fallback;
@@ -94,7 +94,7 @@ export async function getTrolleyDecision(session: Session, dilemma: Dilemma): Pr
       return {
         choiceId: dilemma.choices[0].id,
         speaker: "coordinator",
-        reasoning: `[System fallback: API failure] ${msg}`,
+        reasoning: "A silence stretches across the threshold of choice. When the mind fails to speak, the body acts on instinct alone.",
         confidence: 0,
       };
     }
@@ -103,7 +103,7 @@ export async function getTrolleyDecision(session: Session, dilemma: Dilemma): Pr
   return createFallbackDecision("Unexpected: retry loop exited.", dilemma);
 }
 
-export async function getConquestAction(game: ConquestGame, agentId: string, turn: number): Promise<ConquestAction> {
+export async function getStartupAction(game: StartupGame, agentId: string, turn: number, marketEvent: MarketEvent): Promise<StartupAction> {
   const llm = getProvider();
 
   // Try to load agent personality
@@ -114,38 +114,38 @@ export async function getConquestAction(game: ConquestGame, agentId: string, tur
     // No personality cached — that's fine
   }
 
-  const systemPrompt = buildConquestSystemPrompt(personality);
-  let userMessage = buildConquestTurnMessage(game, agentId, turn);
+  const systemPrompt = buildStartupSystemPrompt(personality);
+  let userMessage = buildStartupTurnMessage(game, agentId, turn, marketEvent);
 
-  logger.info("Requesting conquest action", { gameId: game.id, agentId, turn });
+  logger.info("Requesting startup action", { gameId: game.id, agentId, turn });
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const rawText = await llm.getCompletion(systemPrompt, userMessage);
-      const result = parseConquestAction(rawText);
+      const result = parseStartupAction(rawText);
 
       if (!result.success) {
-        logger.warn(`Conquest parse failed attempt ${attempt}`, { error: result.error });
+        logger.warn(`Startup parse failed attempt ${attempt}`, { error: result.error });
         if (attempt < MAX_RETRIES) {
           userMessage += `\n\n---\n\n## CORRECTION REQUIRED\n\nYour previous response could not be parsed. Error: ${result.error}\n\nPlease respond with ONLY a valid JSON object.`;
           continue;
         }
-        return { type: "HOLD", source: null, target: null, reasoning: `[System fallback: ${result.error}]` };
+        return { type: "TRAIN", targetAgentId: null, reasoning: `[System fallback: ${result.error}]` };
       }
 
       return result.action!;
     } catch (err) {
       const msg = (err as Error).message;
-      logger.error(`Conquest API error attempt ${attempt}`, { error: msg });
+      logger.error(`Startup API error attempt ${attempt}`, { error: msg });
       if (attempt < MAX_RETRIES) {
         await delay(BASE_BACKOFF_MS * Math.pow(2, attempt - 1));
         continue;
       }
-      return { type: "HOLD", source: null, target: null, reasoning: `[System fallback: API failure] ${msg}` };
+      return { type: "TRAIN", targetAgentId: null, reasoning: `[System fallback: API failure] ${msg}` };
     }
   }
 
-  return { type: "HOLD", source: null, target: null, reasoning: "Unexpected: retry loop exited" };
+  return { type: "TRAIN", targetAgentId: null, reasoning: "Unexpected: retry loop exited" };
 }
 
 export async function generateProfileNarrative(session: Session): Promise<string> {

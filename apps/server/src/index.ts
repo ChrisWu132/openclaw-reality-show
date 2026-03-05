@@ -7,7 +7,7 @@ import { loadAllPersonalities } from "./loaders/personality-loader.js";
 import { initLLMClient } from "./ai/llm-client.js";
 import { sessionRouter } from "./routes/session.js";
 import { agentRouter } from "./routes/agent.js";
-import { conquestRouter } from "./routes/conquest.js";
+import { startupRouter } from "./routes/startup.js";
 import { setupWebSocketServer } from "./ws/ws-server.js";
 import { createLogger } from "./utils/logger.js";
 import { sessions } from "./engine/state-manager.js";
@@ -32,7 +32,7 @@ async function startServer(): Promise<void> {
 
   app.use("/api", sessionRouter);
   app.use("/api", agentRouter);
-  app.use("/api", conquestRouter);
+  app.use("/api", startupRouter);
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", activeSessions: sessions.size });

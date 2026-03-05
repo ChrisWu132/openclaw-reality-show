@@ -50,7 +50,7 @@ function AiDecidingIndicator() {
       <div style={{ fontSize: "8px", color: COLORS.accentOrange, letterSpacing: "0.1em", marginBottom: "8px" }}>
         AI DECIDING{dots}
       </div>
-      <div style={{ fontSize: "6px", color: "#505060", lineHeight: "1.8" }}>
+      <div style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', 'Courier New', monospace", color: "#505060", lineHeight: "1.6" }}>
         {THINK_LINES[thinkLine]}
       </div>
     </div>
@@ -75,7 +75,7 @@ function RoundTransition() {
       style={{
         position: "absolute",
         inset: 0,
-        background: "rgba(0, 0, 0, 0.8)",
+        background: COLORS.bgPrimary,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -100,23 +100,26 @@ function RoundTransition() {
   );
 }
 
-/** Click prompt hint at bottom */
+/** Click prompt hint — centered on screen */
 function ClickPrompt({ label }: { label: string }) {
   return (
     <div
       style={{
         position: "absolute",
-        bottom: "12px",
+        top: "50%",
         left: "50%",
-        transform: "translateX(-50%)",
+        transform: "translate(-50%, -50%)",
         fontFamily: "'Press Start 2P', monospace",
-        fontSize: "8px",
-        color: "rgba(255,255,255,0.4)",
+        fontSize: "10px",
+        color: "rgba(255,255,255,0.6)",
         letterSpacing: "0.15em",
         animation: "pulse 2s infinite",
         zIndex: 30,
         pointerEvents: "none",
         textShadow: "0 0 10px rgba(255,255,255,0.1)",
+        background: "rgba(0, 0, 0, 0.4)",
+        padding: "12px 24px",
+        borderRadius: "2px",
       }}
     >
       {label}
@@ -126,8 +129,10 @@ function ClickPrompt({ label }: { label: string }) {
 
 export function GameContainer() {
   const scenePhase = useGameStore((s) => s.scenePhase);
+  const consequenceSubPhase = useGameStore((s) => s.consequenceSubPhase);
   const waitingForClick = useGameStore((s) => s.waitingForClick);
   const advanceClick = useGameStore((s) => s.advanceClick);
+  const dilemmaFullyRevealed = useGameStore((s) => s.dilemmaFullyRevealed);
 
   // Determine click prompt text
   let clickLabel = "";
@@ -173,8 +178,12 @@ export function GameContainer() {
       {scenePhase === "round_start" && <RoundTransition />}
       {scenePhase === "deciding" && <AiDecidingIndicator />}
 
-      {/* Click prompt */}
-      {waitingForClick && <ClickPrompt label={clickLabel} />}
+      {/* Click prompt — hidden during consequence animation until aftermath, and during dilemma until fully revealed */}
+      {waitingForClick
+        && !(scenePhase === "consequence" && consequenceSubPhase !== "aftermath")
+        && !(scenePhase === "dilemma" && !dilemmaFullyRevealed)
+        && <ClickPrompt label={clickLabel} />
+      }
     </div>
   );
 }

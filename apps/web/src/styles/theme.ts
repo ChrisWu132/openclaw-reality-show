@@ -8,3 +8,8 @@ export const COLORS = {
   accentRed: "#d94a4a",
   accentOrange: "#d97a2c",
 } as const;
+
+export const FONTS = {
+  pixel: "'Press Start 2P', monospace",
+  body: "'IBM Plex Mono', 'Courier New', monospace",
+} as const;

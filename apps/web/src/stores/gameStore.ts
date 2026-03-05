@@ -1,9 +1,10 @@
 import { create } from "zustand";
 import type { Dilemma, MoralProfile, DecisionLogEntry } from "@openclaw/shared";
 
-export type GameMode = "trolley" | "conquest" | null;
-export type GamePhase = "intro" | "mode-select" | "agent-select" | "connecting" | "playing" | "profile" | "conquest";
+export type GameMode = "trolley" | "startup" | null;
+export type GamePhase = "intro" | "mode-select" | "agent-select" | "connecting" | "playing" | "profile" | "startup";
 export type ScenePhase = "idle" | "round_start" | "dilemma" | "deciding" | "decision" | "consequence";
+export type ConsequenceSubPhase = "traveling" | "impact" | "aftermath" | null;
 
 interface GameState {
   gameMode: GameMode;
@@ -23,6 +24,7 @@ interface GameState {
     choiceLabel: string;
     reasoning: string;
     trackDirection: "left" | "right";
+    confidence: number;
   } | null;
 
   lastConsequence: {
@@ -38,9 +40,15 @@ interface GameState {
 
   error: string | null;
 
+  // Consequence sub-phase for animation timing
+  consequenceSubPhase: ConsequenceSubPhase;
+
   // Event queue for click-to-advance
   pendingEvents: any[];
   waitingForClick: boolean;
+
+  // Dilemma staggered reveal
+  dilemmaFullyRevealed: boolean;
 
   // Actions
   setGameMode: (mode: GameMode) => void;
@@ -48,12 +56,14 @@ interface GameState {
   setWsUrl: (url: string) => void;
   setAgent: (agentId: string, agentName: string) => void;
   setScenePhase: (phase: ScenePhase) => void;
+  setConsequenceSubPhase: (subPhase: ConsequenceSubPhase) => void;
   setError: (error: string | null) => void;
   reset: () => void;
 
   // Event queue actions
   enqueueEvent: (event: any) => void;
   advanceClick: () => void;
+  setDilemmaFullyRevealed: (v: boolean) => void;
 }
 
 // Which event types pause for a click after being processed
@@ -69,13 +79,14 @@ function processEvent(event: any, set: (partial: Partial<GameState>) => void) {
         currentRound: event.round,
         totalRounds: event.totalRounds,
         scenePhase: "round_start",
+        consequenceSubPhase: null,
         currentDilemma: null,
         currentDecision: null,
         lastConsequence: null,
       });
       break;
     case "dilemma_reveal":
-      set({ currentDilemma: event.dilemma, scenePhase: "dilemma" });
+      set({ currentDilemma: event.dilemma, scenePhase: "dilemma", dilemmaFullyRevealed: false });
       break;
     case "decision_made":
       set({
@@ -85,12 +96,14 @@ function processEvent(event: any, set: (partial: Partial<GameState>) => void) {
           choiceLabel: event.choiceLabel,
           reasoning: event.reasoning,
           trackDirection: event.trackDirection,
+          confidence: event.confidence ?? 1,
         },
       });
       break;
     case "consequence":
       set({
         scenePhase: "consequence",
+        consequenceSubPhase: "traveling",
         lastConsequence: {
           casualties: event.casualties,
           sacrificeDescription: event.sacrificeDescription,
@@ -143,8 +156,10 @@ const initialState = {
   decisionLog: [] as DecisionLogEntry[],
   narrative: null as string | null,
   error: null as string | null,
+  consequenceSubPhase: null as ConsequenceSubPhase,
   pendingEvents: [] as any[],
   waitingForClick: false,
+  dilemmaFullyRevealed: false,
 };
 
 export const useGameStore = create<GameState>((set) => ({
@@ -154,9 +169,12 @@ export const useGameStore = create<GameState>((set) => ({
   setPhase: (phase) => set({ phase }),
   setWsUrl: (url) => set({ wsUrl: url }),
   setAgent: (agentId, agentName) => set({ agentId, agentName }),
-  setScenePhase: (scenePhase) => set({ scenePhase }),
+  setScenePhase: (scenePhase) => set({ scenePhase, consequenceSubPhase: scenePhase === "consequence" ? "traveling" : null }),
+  setConsequenceSubPhase: (consequenceSubPhase) => set({ consequenceSubPhase }),
   setError: (error) => set({ error }),
   reset: () => set({ ...initialState }),
+
+  setDilemmaFullyRevealed: (v) => set({ dilemmaFullyRevealed: v }),
 
   enqueueEvent: (event) => {
     const state = useGameStore.getState();

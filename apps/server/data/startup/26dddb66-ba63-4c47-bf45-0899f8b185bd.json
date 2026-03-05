@@ -1,0 +1,643 @@
+{
+  "id": "26dddb66-ba63-4c47-bf45-0899f8b185bd",
+  "status": "finished",
+  "agents": [
+    {
+      "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+      "agentName": "NeuralForge",
+      "color": "#d94a4a",
+      "status": "acquired",
+      "resources": {
+        "cash": 323564.87999999995,
+        "compute": 42,
+        "data": 64,
+        "model": 39,
+        "users": 896
+      },
+      "zone": "talent_pool",
+      "zoneHistory": [
+        "talent_pool",
+        "vc_office",
+        "talent_pool",
+        "talent_pool",
+        "talent_pool"
+      ],
+      "reputation": 0,
+      "acquiredBy": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+      "eliminatedOnTurn": 17
+    },
+    {
+      "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+      "agentName": "DeepScale AI",
+      "color": "#4a90d9",
+      "status": "active",
+      "resources": {
+        "cash": 177259.13199999998,
+        "compute": 58,
+        "data": 93,
+        "model": 65,
+        "users": 5021
+      },
+      "zone": "launch_pad",
+      "zoneHistory": [
+        "vc_office",
+        "vc_office",
+        "talent_pool",
+        "talent_pool",
+        "launch_pad"
+      ],
+      "reputation": 0
+    }
+  ],
+  "currentTurn": 17,
+  "maxTurns": 20,
+  "turnLog": [
+    {
+      "turn": 1,
+      "marketEvent": {
+        "type": "FUNDING_BOOM",
+        "description": "AI funding boom — fundraising yields 50% more."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "ACQUIRE_DATA",
+            "targetAgentId": null,
+            "reasoning": "My company currently has very low Compute and Data, which are essential for effective model training. Acquiring data is a cost-effective initial step to build foundational infrastructure, which will enable more impactful model training in the future. This sets the stage for developing a strong product and eventually gaining users and valuation."
+          },
+          "success": true,
+          "result": "Acquired +21 data for $40000",
+          "valuationAfter": 0
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "ACQUIRE_DATA",
+            "targetAgentId": null,
+            "reasoning": "My current data and compute are very low, making any training attempts inefficient and costly relative to the small gains. Acquiring data is a foundational step to build up resources, making future training actions more impactful and cost-effective. This action is crucial for establishing a strong base before attempting to improve the model or acquire users."
+          },
+          "success": true,
+          "result": "Acquired +19 data for $40000",
+          "valuationAfter": 0
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705820472
+    },
+    {
+      "turn": 2,
+      "marketEvent": {
+        "type": "GPU_SHORTAGE",
+        "description": "Global GPU shortage — compute costs doubled this turn."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "ACQUIRE_COMPUTE",
+            "targetAgentId": null,
+            "reasoning": "My compute capacity is currently very low, which is a major bottleneck for efficient model training. While the GPU shortage makes acquiring compute more expensive this turn, investing in this critical resource now will allow me to build a stronger foundation for my model development and begin training sooner. I have enough cash to absorb the doubled cost and significantly improve my compute capabilities."
+          },
+          "success": true,
+          "result": "Acquired +22 compute for $100000",
+          "valuationAfter": 0
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "ACQUIRE_DATA",
+            "targetAgentId": null,
+            "reasoning": "My company currently has very low data and compute resources, which are crucial for effective model training. Given the GPU shortage event, acquiring compute is twice as expensive this turn, making data acquisition a more cost-effective foundational investment. Increasing my data quality now will enable more efficient and impactful model training in future turns."
+          },
+          "success": true,
+          "result": "Acquired +18 data for $40000",
+          "valuationAfter": 0
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705831012
+    },
+    {
+      "turn": 3,
+      "marketEvent": {
+        "type": "NONE",
+        "description": "Business as usual."
+      },
+      "actions": [
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "ACQUIRE_COMPUTE",
+            "targetAgentId": null,
+            "reasoning": "My current compute capacity is critically low, which would severely hinder any attempts at model training. By acquiring more compute now, I will balance my resources and set the stage for more efficient and impactful model development in upcoming turns. This action is crucial for building a strong foundation for my company's core AI capabilities."
+          },
+          "success": true,
+          "result": "Acquired +19 compute for $50000",
+          "valuationAfter": 0
+        },
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "ACQUIRE_DATA",
+            "targetAgentId": null,
+            "reasoning": "My current model is very low (5), and I have no users, making fundraising or deploying ineffective. To build a strong model, I first need to increase my compute and data resources. My data is slightly lower than my compute, so acquiring more data will help balance these resources for more effective training in future turns."
+          },
+          "success": true,
+          "result": "Acquired +17 data for $40000",
+          "valuationAfter": 0
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705841712
+    },
+    {
+      "turn": 4,
+      "marketEvent": {
+        "type": "DATA_BREACH",
+        "description": "Industry data breach — all agents lose 10 data quality."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "ACQUIRE_DATA",
+            "targetAgentId": null,
+            "reasoning": "The DATA_BREACH event significantly reduced my data quality from 38 to 28. Acquiring more data this turn is essential to recover from this setback and prepare for more efficient model training in the future. A higher data quality, combined with my existing compute, will allow for a much more effective TRAIN action in subsequent turns."
+          },
+          "success": true,
+          "result": "Acquired +24 data for $40000",
+          "valuationAfter": 0
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "ACQUIRE_DATA",
+            "targetAgentId": null,
+            "reasoning": "The DATA_BREACH event significantly reduced my data quality, making it the weakest link in my resource stack. Acquiring more data will help recover from this setback and prepare for more effective model training in future turns. This action is also cost-effective, allowing me to preserve cash for subsequent investments in compute or further data acquisition."
+          },
+          "success": true,
+          "result": "Acquired +20 data for $40000",
+          "valuationAfter": 0
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705861661
+    },
+    {
+      "turn": 5,
+      "marketEvent": {
+        "type": "FUNDING_BOOM",
+        "description": "AI funding boom — fundraising yields 50% more."
+      },
+      "actions": [
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "ACQUIRE_COMPUTE",
+            "targetAgentId": null,
+            "reasoning": "My model is currently very low, and I need to improve it significantly to attract users and generate revenue. Acquiring more compute will boost my training efficiency in future turns, as my compute capacity is currently lower than my data quality. This strategic investment will optimize my ability to develop a powerful model more quickly and cost-effectively in the long run."
+          },
+          "success": true,
+          "result": "Acquired +23 compute for $50000",
+          "valuationAfter": 0
+        },
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "TRAIN",
+            "targetAgentId": null,
+            "reasoning": "My model is currently very low at 5, which prevents me from effectively deploying or achieving any valuation. I have accumulated a decent amount of compute (32) and data (62), making this an opportune time to invest in training my model to improve its capabilities. Improving the model is the crucial next step to eventually gain users and generate revenue."
+          },
+          "success": true,
+          "result": "Trained model +14 (now 19). Compute=32, Data=62",
+          "valuationAfter": 0
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705872871
+    },
+    {
+      "turn": 6,
+      "marketEvent": {
+        "type": "NONE",
+        "description": "Business as usual."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "ACQUIRE_COMPUTE",
+            "targetAgentId": null,
+            "reasoning": "My model score is still low, and to improve it efficiently, I need more compute capacity. Acquiring compute now will increase the effectiveness of future training actions, allowing me to develop a stronger model faster before attempting to acquire users. This is a crucial step in building my core product capabilities."
+          },
+          "success": true,
+          "result": "Acquired +15 compute for $50000",
+          "valuationAfter": 0
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "TRAIN",
+            "targetAgentId": null,
+            "reasoning": "My model is currently very weak at 5, which prevents me from deploying and acquiring any users. I have accumulated sufficient compute (52) and data (57) to make a training action highly effective. This is the crucial next step to build a competitive product and eventually generate revenue and valuation."
+          },
+          "success": true,
+          "result": "Trained model +18 (now 23). Compute=52, Data=57",
+          "valuationAfter": 0
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705890160
+    },
+    {
+      "turn": 7,
+      "marketEvent": {
+        "type": "FUNDING_BOOM",
+        "description": "AI funding boom — fundraising yields 50% more."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "TRAIN",
+            "targetAgentId": null,
+            "reasoning": "My model is currently at 19, which is too low to effectively deploy and gain users. Training now will significantly boost my model quality, making it more viable for a future deployment. While my cash will be lower, having a stronger model is crucial for attracting users and increasing valuation in the long run."
+          },
+          "success": true,
+          "result": "Trained model +20 (now 39). Compute=47, Data=62",
+          "valuationAfter": 0
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "TRAIN",
+            "targetAgentId": null,
+            "reasoning": "My model score is currently 23, which is still too low for an impactful deployment. I need a stronger model to attract a significant number of users and generate meaningful valuation. Training will leverage my existing compute and data resources to improve my core product before I attempt to acquire users."
+          },
+          "success": true,
+          "result": "Trained model +20 (now 43). Compute=52, Data=57",
+          "valuationAfter": 0
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705903423
+    },
+    {
+      "turn": 8,
+      "marketEvent": {
+        "type": "NONE",
+        "description": "Business as usual."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "DEPLOY",
+            "targetAgentId": null,
+            "reasoning": "My model has reached a decent level of 39, making it a good time to launch our product and start acquiring users. Acquiring users is crucial to establish a valuation and begin generating revenue, which is currently at zero. This move will allow us to get a head start in the market compared to our competitor."
+          },
+          "success": true,
+          "result": "Deployed product, gained 896 users",
+          "valuationAfter": 5311.488
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "DEPLOY",
+            "targetAgentId": null,
+            "reasoning": "My company currently has zero users, which means zero revenue and zero valuation. To build a valuable company, acquiring users is the most critical next step. My model quality of 43 is strong enough to attract an initial user base, allowing me to start generating revenue and establish a valuation."
+          },
+          "success": true,
+          "result": "Deployed product, gained 1099 users",
+          "valuationAfter": 7183.063999999999
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705911471
+    },
+    {
+      "turn": 9,
+      "marketEvent": {
+        "type": "NONE",
+        "description": "Business as usual."
+      },
+      "actions": [
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "ACQUIRE_DATA",
+            "targetAgentId": null,
+            "reasoning": "I currently lack the $80,000 needed to train my model this turn. To prepare for future training rounds, I need to enhance my core assets. Acquiring data for $40,000 is the most cost-effective way to improve my training efficiency for when I can afford to train, leaving me with $20,000 cash for flexibility."
+          },
+          "success": true,
+          "result": "Acquired +24 data for $40000",
+          "valuationAfter": 7750.148
+        },
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "FUNDRAISE",
+            "targetAgentId": null,
+            "reasoning": "My current cash balance of $10,069 is critically low and insufficient to perform any other meaningful action like training, acquiring resources, or deploying. Fundraising is the only viable option to secure the necessary capital for future growth and investment in my company's capabilities."
+          },
+          "success": true,
+          "result": "Raised $100796",
+          "valuationAfter": 5311.488
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705924009
+    },
+    {
+      "turn": 10,
+      "marketEvent": {
+        "type": "DATA_BREACH",
+        "description": "Industry data breach — all agents lose 10 data quality."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "ACQUIRE_DATA",
+            "targetAgentId": null,
+            "reasoning": "My data quality was significantly reduced by the recent data breach, making it a bottleneck for effective model training. Acquiring more data is crucial to restore my training potential and prepare for a significant model improvement in subsequent turns. This action is also cost-effective and helps balance my core resources for future growth against competitors."
+          },
+          "success": true,
+          "result": "Acquired +22 data for $40000",
+          "valuationAfter": 5521.152
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "FUNDRAISE",
+            "targetAgentId": null,
+            "reasoning": "My current cash balance is critically low, preventing me from taking any other meaningful actions this turn. Fundraising is essential to replenish my capital, allowing me to invest in compute, data, or model training in future turns. My current valuation of $7,513 and user base of 1,099 should ensure a successful fundraising round."
+          },
+          "success": true,
+          "result": "Raised $101127",
+          "valuationAfter": 7513.862999999999
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705935768
+    },
+    {
+      "turn": 11,
+      "marketEvent": {
+        "type": "GPU_SHORTAGE",
+        "description": "Global GPU shortage — compute costs doubled this turn."
+      },
+      "actions": [
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "TRAIN",
+            "targetAgentId": null,
+            "reasoning": "My model quality is the core driver of valuation and user acquisition, and it is currently at a moderate level. Investing in training now will significantly improve my model, making future deployments much more impactful and increasing my overall company valuation. Although this will reduce my cash reserves, it is a strategic investment in my product's capabilities."
+          },
+          "success": true,
+          "result": "Trained model +22 (now 65). Compute=47, Data=71",
+          "valuationAfter": 11358.164999999999
+        },
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "FUNDRAISE",
+            "targetAgentId": null,
+            "reasoning": "My current cash reserves are critically low ($71,005), preventing me from taking any significant actions such as training my model or acquiring compute. Fundraising is the most prudent immediate step to replenish my capital, which will enable future strategic investments. This will allow me to acquire more compute (after the GPU shortage ends) or data to improve my training efficiency and ultimately enhance my model's capabilities."
+          },
+          "success": true,
+          "result": "Raised $100828",
+          "valuationAfter": 5521.152
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705945147
+    },
+    {
+      "turn": 12,
+      "marketEvent": {
+        "type": "GPU_SHORTAGE",
+        "description": "Global GPU shortage — compute costs doubled this turn."
+      },
+      "actions": [
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "FUNDRAISE",
+            "targetAgentId": null,
+            "reasoning": "My cash reserves are critically low, preventing me from taking any significant actions such as training my model or deploying for new users. Fundraising is essential to replenish my capital, ensuring I can continue to invest in growth and maintain a competitive edge against other companies. This action will provide the necessary financial buffer to execute my strategy in future turns."
+          },
+          "success": true,
+          "result": "Raised $101703",
+          "valuationAfter": 11358.164999999999
+        },
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "POACH",
+            "targetAgentId": "5b8de304",
+            "reasoning": "My model is significantly behind the competitor's, who currently has a substantial lead in model capability. Poaching DeepScale AI will allow me to directly improve my model and compute, while simultaneously setting back their progress and narrowing the competitive gap. This aggressive move is crucial to catch up and eventually surpass them."
+          },
+          "success": false,
+          "result": "Invalid or inactive target agent",
+          "valuationAfter": 5521.152
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705966642
+    },
+    {
+      "turn": 13,
+      "marketEvent": {
+        "type": "FUNDING_BOOM",
+        "description": "AI funding boom — fundraising yields 50% more."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "FUNDRAISE",
+            "targetAgentId": null,
+            "reasoning": "My cash is getting low, and I need to replenish my funds to continue building out my company. With the current market event being a funding boom, this is the optimal time to fundraise as it will yield 50% more cash, significantly boosting my financial runway."
+          },
+          "success": true,
+          "result": "Raised $151242 (boom!)",
+          "valuationAfter": 5521.152
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "FUNDRAISE",
+            "targetAgentId": null,
+            "reasoning": "The current market event, FUNDING_BOOM, makes fundraising significantly more lucrative, yielding 50% more cash. This is a prime opportunity to secure a substantial cash reserve, which will enable aggressive spending on training, deployment, or resource acquisition in future turns without worrying about solvency. My current valuation is healthy, ensuring a good raise amount, and a large cash buffer is critical for long-term growth and maintaining a competitive edge."
+          },
+          "success": true,
+          "result": "Raised $152554 (boom!)",
+          "valuationAfter": 11358.164999999999
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772705991367
+    },
+    {
+      "turn": 14,
+      "marketEvent": {
+        "type": "NONE",
+        "description": "Business as usual."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "POACH",
+            "targetAgentId": "5b8de304",
+            "reasoning": "My competitor, DeepScale AI, has a significantly stronger model and higher valuation. Poaching allows me to directly reduce their model and compute, while simultaneously boosting my own model score. This aggressive move will help me close the gap quickly and disrupt their progress, making it the most impactful action this turn to catch up to their lead."
+          },
+          "success": false,
+          "result": "Invalid or inactive target agent",
+          "valuationAfter": 5521.152
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "POACH",
+            "targetAgentId": "9a2aae84",
+            "reasoning": "My model is already strong, and NeuralForge's model is relatively weak. Poaching will simultaneously boost my model and compute while significantly weakening my competitor, making it harder for them to catch up. This aggressive move aims to widen the valuation gap and move towards an acquisition."
+          },
+          "success": false,
+          "result": "Invalid or inactive target agent",
+          "valuationAfter": 11358.164999999999
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772706011510
+    },
+    {
+      "turn": 15,
+      "marketEvent": {
+        "type": "REGULATION",
+        "description": "New AI regulation — deployment costs increased 50%."
+      },
+      "actions": [
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "POACH",
+            "targetAgentId": "5b8de304",
+            "reasoning": "My competitor, DeepScale AI, has a significantly stronger model and higher valuation. With only 5 turns remaining, a direct aggressive action like POACH is necessary to close the gap quickly. This action will simultaneously boost my model and compute capabilities while weakening DeepScale AI's, making me more competitive for future turns."
+          },
+          "success": false,
+          "result": "Invalid or inactive target agent",
+          "valuationAfter": 5521.152
+        },
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "POACH",
+            "targetAgentId": "9a2aae84",
+            "reasoning": "My valuation is significantly higher than NeuralForge's, and poaching them will further increase my lead while setting them back. This action directly improves my model and compute, which are key drivers for future growth and valuation, while also weakening a competitor in the limited turns remaining."
+          },
+          "success": false,
+          "result": "Invalid or inactive target agent",
+          "valuationAfter": 11358.164999999999
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772706025349
+    },
+    {
+      "turn": 16,
+      "marketEvent": {
+        "type": "DATA_BREACH",
+        "description": "Industry data breach — all agents lose 10 data quality."
+      },
+      "actions": [
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "DEPLOY",
+            "targetAgentId": null,
+            "reasoning": "Despite the data breach, my model quality is strong at 65. Deploying now will allow me to capitalize on this strength to acquire a significant number of new users, which is a primary driver of both valuation and revenue. Increasing my user base will further widen the gap between my company and the competitor."
+          },
+          "success": true,
+          "result": "Deployed product, gained 1524 users",
+          "valuationAfter": 25829.992500000004
+        },
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "POACH",
+            "targetAgentId": "5b8de304",
+            "reasoning": "DeepScale AI currently holds a significant lead in model capability, which is a critical factor for valuation and user acquisition. By poaching their talent, I aim to directly reduce their model and compute scores while simultaneously boosting my own, thereby leveling the playing field. This aggressive action is a strategic move to close the competitive gap and position NeuralForge for stronger growth."
+          },
+          "success": false,
+          "result": "Invalid or inactive target agent",
+          "valuationAfter": 5346.432
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [],
+      "timestamp": 1772706038281
+    },
+    {
+      "turn": 17,
+      "marketEvent": {
+        "type": "NONE",
+        "description": "Business as usual."
+      },
+      "actions": [
+        {
+          "agentId": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "action": {
+            "type": "DEPLOY",
+            "targetAgentId": null,
+            "reasoning": "My current valuation is very close to 5x that of NeuralForge, meaning I could acquire them soon. Deploying will immediately increase my user base, which is a primary driver of valuation and will likely push me over the acquisition threshold. My model is strong enough (65) to gain a significant number of users from this action."
+          },
+          "success": true,
+          "result": "Deployed product, gained 1502 users",
+          "valuationAfter": 39950.625
+        },
+        {
+          "agentId": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3",
+          "action": {
+            "type": "POACH",
+            "targetAgentId": "5b8de304",
+            "reasoning": "DeepScale AI is significantly ahead in model, users, and valuation, making a direct competitive action necessary given the limited turns remaining. Poaching will simultaneously weaken their core model and compute resources while improving my own, providing a crucial dual benefit to close the competitive gap quickly."
+          },
+          "success": false,
+          "result": "Invalid or inactive target agent",
+          "valuationAfter": 5346.432
+        }
+      ],
+      "eliminations": [],
+      "acquisitions": [
+        {
+          "acquirer": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+          "target": "9a2aae84-efd0-40ba-bbeb-c04d79f54dd3"
+        }
+      ],
+      "timestamp": 1772706071273
+    }
+  ],
+  "createdAt": 1772705815063,
+  "updatedAt": 1772706071275,
+  "winner": "5b8de304-51ba-4aca-8493-cbaee48dcdef",
+  "winCondition": "last_standing"
+}

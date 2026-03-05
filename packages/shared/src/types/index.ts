@@ -3,5 +3,5 @@ export * from "./dilemma";
 export * from "./trolley-decision";
 export * from "./ws-events";
 export * from "./errors";
-export * from "./conquest";
-export * from "./conquest-ws-events";
+export * from "./startup";
+export * from "./startup-ws-events";

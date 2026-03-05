@@ -42,15 +42,21 @@ export class GoogleProvider implements LLMProvider {
       );
     }
 
-    const result = await this.model.generateContent({
-      systemInstruction: systemPrompt,
-      contents: [{ role: "user", parts: [{ text: userMessage }] }],
-      generationConfig: {
-        temperature: 0.8,
-        maxOutputTokens: 2048,
-        topP: 0.9,
-      },
-    });
+    const timeout = 30_000;
+    const result = await Promise.race([
+      this.model.generateContent({
+        systemInstruction: systemPrompt,
+        contents: [{ role: "user", parts: [{ text: userMessage }] }],
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 2048,
+          topP: 0.9,
+        },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`LLM call timed out after ${timeout / 1000}s`)), timeout),
+      ),
+    ]);
 
     return result.response.text();
   }

@@ -1,9 +1,17 @@
-import type { ConquestAction, ConquestActionType } from "@openclaw/shared";
+import type { StartupAction, StartupActionType } from "@openclaw/shared";
 import { createLogger } from "../utils/logger.js";
 
-const logger = createLogger("conquest-response-parser");
+const logger = createLogger("startup-response-parser");
 
-const VALID_TYPES = new Set<ConquestActionType>(["EXPAND", "ATTACK", "FORTIFY", "HOLD"]);
+const VALID_TYPES = new Set<StartupActionType>([
+  "TRAIN",
+  "DEPLOY",
+  "FUNDRAISE",
+  "ACQUIRE_COMPUTE",
+  "ACQUIRE_DATA",
+  "POACH",
+  "OPEN_SOURCE",
+]);
 
 function stripMarkdownFences(raw: string): string {
   let text = raw.trim();
@@ -17,13 +25,13 @@ function stripMarkdownFences(raw: string): string {
   return text.trim();
 }
 
-export interface ConquestParseResult {
+export interface StartupParseResult {
   success: boolean;
-  action?: ConquestAction;
+  action?: StartupAction;
   error?: string;
 }
 
-export function parseConquestAction(rawText: string): ConquestParseResult {
+export function parseStartupAction(rawText: string): StartupParseResult {
   if (!rawText || rawText.trim() === "") {
     return { success: false, error: "Empty response from LLM" };
   }
@@ -35,7 +43,7 @@ export function parseConquestAction(rawText: string): ConquestParseResult {
     parsed = JSON.parse(stripped);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    logger.warn("Failed to parse conquest action", { error: msg });
+    logger.warn("Failed to parse startup action", { error: msg });
     return { success: false, error: `Invalid JSON: ${msg}` };
   }
 
@@ -43,31 +51,22 @@ export function parseConquestAction(rawText: string): ConquestParseResult {
     return { success: false, error: "Response is not a JSON object" };
   }
 
-  const actionType = String(parsed.type).toUpperCase() as ConquestActionType;
+  const actionType = String(parsed.type).toUpperCase() as StartupActionType;
   if (!VALID_TYPES.has(actionType)) {
     return { success: false, error: `Invalid action type "${parsed.type}"` };
   }
 
-  // Parse coordinates
-  let source = null;
-  let target = null;
+  const targetAgentId =
+    typeof parsed.targetAgentId === "string" && parsed.targetAgentId.trim()
+      ? parsed.targetAgentId.trim()
+      : null;
 
-  if (parsed.source && typeof parsed.source === "object") {
-    source = { q: Number(parsed.source.q), r: Number(parsed.source.r) };
-    if (isNaN(source.q) || isNaN(source.r)) {
-      return { success: false, error: "Invalid source coordinates" };
-    }
-  }
-
-  if (parsed.target && typeof parsed.target === "object") {
-    target = { q: Number(parsed.target.q), r: Number(parsed.target.r) };
-    if (isNaN(target.q) || isNaN(target.r)) {
-      return { success: false, error: "Invalid target coordinates" };
-    }
+  if (actionType === "POACH" && !targetAgentId) {
+    return { success: false, error: "POACH requires a targetAgentId" };
   }
 
   const reasoning = typeof parsed.reasoning === "string" ? parsed.reasoning : "No reasoning provided";
 
-  const action: ConquestAction = { type: actionType, source, target, reasoning };
+  const action: StartupAction = { type: actionType, targetAgentId, reasoning };
   return { success: true, action };
 }

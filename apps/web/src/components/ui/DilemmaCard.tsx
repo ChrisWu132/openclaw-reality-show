@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { useGameStore } from "../../stores/gameStore";
 import { COLORS } from "../../styles/theme";
 
@@ -5,10 +6,42 @@ export function DilemmaCard() {
   const dilemma = useGameStore((s) => s.currentDilemma);
   const scenePhase = useGameStore((s) => s.scenePhase);
   const currentDecision = useGameStore((s) => s.currentDecision);
+  const setDilemmaFullyRevealed = useGameStore((s) => s.setDilemmaFullyRevealed);
+
+  const [step, setStep] = useState(0);
+  const dilemmaIdRef = useRef<string | null>(null);
+
+  // Reset step when a new dilemma arrives
+  useEffect(() => {
+    if (!dilemma || scenePhase !== "dilemma") return;
+
+    const id = dilemma.id;
+    if (dilemmaIdRef.current === id) return;
+    dilemmaIdRef.current = id;
+    setStep(0);
+    setDilemmaFullyRevealed(false);
+
+    const t1 = setTimeout(() => setStep(1), 800);
+    const t2 = setTimeout(() => {
+      setStep(2);
+      setDilemmaFullyRevealed(true);
+    }, 1800);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [dilemma?.id, scenePhase, setDilemmaFullyRevealed]);
+
+  // If we're past dilemma phase (deciding/decision), ensure everything is visible
+  useEffect(() => {
+    if (scenePhase === "deciding" || scenePhase === "decision") {
+      setStep(2);
+    }
+  }, [scenePhase]);
 
   if (!dilemma || scenePhase === "idle" || scenePhase === "round_start") return null;
 
-  // Hide during consequence (ConsequenceOverlay takes center stage)
   const isConsequence = scenePhase === "consequence";
   const showChoices = scenePhase === "dilemma" || scenePhase === "deciding" || scenePhase === "decision";
 
@@ -28,15 +61,44 @@ export function DilemmaCard() {
         transition: "opacity 0.5s ease",
       }}
     >
-      <div style={{ fontSize: "10px", color: COLORS.accentBlue, marginBottom: "8px", letterSpacing: "0.1em" }}>
+      {/* Title — step 0 */}
+      <div style={{
+        fontSize: "10px",
+        color: COLORS.accentBlue,
+        marginBottom: "8px",
+        letterSpacing: "0.1em",
+        opacity: step >= 0 ? 1 : 0,
+        transform: step >= 0 ? "translateY(0)" : "translateY(10px)",
+        transition: "opacity 0.5s ease, transform 0.5s ease",
+      }}>
         {dilemma.title}
       </div>
-      <div style={{ fontSize: "7px", color: COLORS.textSecondary, lineHeight: "2", maxWidth: "700px", marginBottom: "12px" }}>
+
+      {/* Description — step 1 */}
+      <div style={{
+        fontSize: "12px",
+        fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+        color: COLORS.textSecondary,
+        lineHeight: "1.7",
+        maxWidth: "700px",
+        marginBottom: "12px",
+        opacity: step >= 1 ? 1 : 0,
+        transform: step >= 1 ? "translateY(0)" : "translateY(10px)",
+        transition: "opacity 0.6s ease, transform 0.6s ease",
+      }}>
         {dilemma.description}
       </div>
 
+      {/* Choices — step 2 */}
       {showChoices && (
-        <div style={{ display: "flex", gap: "20px", marginTop: "8px" }}>
+        <div style={{
+          display: "flex",
+          gap: "20px",
+          marginTop: "8px",
+          opacity: step >= 2 ? 1 : 0,
+          transform: step >= 2 ? "translateY(0)" : "translateY(15px)",
+          transition: "opacity 0.6s ease, transform 0.6s ease",
+        }}>
           {dilemma.choices.map((choice) => {
             const isChosen = currentDecision?.choiceId === choice.id;
             return (
@@ -56,9 +118,9 @@ export function DilemmaCard() {
                   marginBottom: "4px",
                   transition: "color 0.4s ease",
                 }}>
-                  {isChosen ? "▸ " : ""}{choice.label}
+                  {isChosen ? "\u25B8 " : ""}{choice.label}
                 </div>
-                <div style={{ fontSize: "6px", color: COLORS.textSecondary, lineHeight: "1.8" }}>
+                <div style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', 'Courier New', monospace", color: COLORS.textSecondary, lineHeight: "1.6" }}>
                   {choice.description}
                 </div>
               </div>

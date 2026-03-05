@@ -1,2 +1,2 @@
 export * from "./rounds";
-export * from "./conquest";
+export * from "./startup";

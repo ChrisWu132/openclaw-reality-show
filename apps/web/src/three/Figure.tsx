@@ -99,10 +99,7 @@ export function Figure({ type, position, hit = false, hitDelay = 0 }: FigureProp
     () => new THREE.MeshStandardMaterial({ color: SKIN_COLOR, roughness: 0.7 }),
     [],
   );
-  const hitMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color, roughness: 0.4, emissive: "#ff4444", emissiveIntensity: 0.8 }),
-    [color],
-  );
+  const hitLightRef = useRef<THREE.PointLight>(null);
 
   useFrame(({ clock }, delta) => {
     if (!groupRef.current || !torsoRef.current) return;
@@ -123,6 +120,7 @@ export function Figure({ type, position, hit = false, hitDelay = 0 }: FigureProp
 
     if (hitActive && hitT > 0) {
       // 3-phase hit animation
+      const tumbleAngle = -Math.PI * 0.7;
       if (hitT < 0.25) {
         // Phase 1: Impact recoil
         const p = hitT / 0.25;
@@ -133,30 +131,37 @@ export function Figure({ type, position, hit = false, hitDelay = 0 }: FigureProp
         if (leftArmRef.current) leftArmRef.current.rotation.z = posture.leftArmZ + 1.5 * ease;
         if (rightArmRef.current) rightArmRef.current.rotation.z = posture.rightArmZ - 1.5 * ease;
       } else if (hitT < 0.67) {
-        // Phase 2: Tumble sideways + drop
+        // Phase 2: Tumble sideways + drop (more dramatic rotation)
         const p = (hitT - 0.25) / 0.42;
         const ease = p * (2 - p); // ease-out quad
-        groupRef.current.rotation.z = -0.3 + (-Math.PI / 2 + 0.3) * ease;
+        groupRef.current.rotation.z = -0.3 + (tumbleAngle + 0.3) * ease;
         groupRef.current.position.y = position[1] - 0.5 * ease;
         if (torsoRef.current) torsoRef.current.rotation.x = -0.4 + 0.4 * ease;
       } else {
         // Phase 3: Settle — micro-bounce
         const p = (hitT - 0.67) / 0.33;
         const bounce = Math.sin(p * Math.PI * 2) * 0.03 * (1 - p);
-        groupRef.current.rotation.z = -Math.PI / 2 + bounce;
+        groupRef.current.rotation.z = tumbleAngle + bounce;
         groupRef.current.position.y = position[1] - 0.5 + bounce * 0.5;
       }
 
-      // Flash emissive on impact
+      // Flash emissive on impact — stronger glow
       if (hitT < 0.3) {
         const flash = 1 - hitT / 0.3;
-        bodyMat.emissiveIntensity = 0.15 + flash * 0.8;
+        bodyMat.emissiveIntensity = 0.15 + flash * 1.5;
         bodyMat.emissive.set("#ff4444");
       } else {
         bodyMat.emissiveIntensity = 0.15;
         bodyMat.emissive.set(color);
       }
+
+      // Temporary red point light at hit figure — imperative intensity (no setState)
+      if (hitLightRef.current) {
+        hitLightRef.current.intensity = hitT < 0.5 ? 3 * (1 - hitT / 0.5) : 0;
+      }
     } else if (!hit) {
+      // Reset hit light when not hit
+      if (hitLightRef.current) hitLightRef.current.intensity = 0;
       // Idle animations
       const t = elapsed;
       const seed = position[0] * 3.7 + position[2] * 1.3;
@@ -191,6 +196,8 @@ export function Figure({ type, position, hit = false, hitDelay = 0 }: FigureProp
 
   return (
     <group ref={groupRef} position={position}>
+      {/* Red impact point light — always rendered, intensity controlled imperatively */}
+      <pointLight ref={hitLightRef} color="#ff2222" intensity={0} distance={3} position={[0, 0.5, 0]} />
       {/* Hips */}
       <mesh position={[0, 0.35, 0]} castShadow material={bodyMat}>
         <cylinderGeometry args={[0.16, 0.18, 0.2, 8]} />

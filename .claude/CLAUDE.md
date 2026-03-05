@@ -85,66 +85,11 @@ Different agents make different decisions. After each session, the decision log 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
-- 2026-03-04: [feature] Added Territory Conquest game mode — 2D hex-grid strategy where 2-4 AI agents compete
-  - New shared types: conquest.ts, conquest-ws-events.ts, conquest constants
-  - New server files: hex-utils.ts, map-templates.ts, conquest-store.ts, conquest-engine.ts, conquest-prompt-builder.ts, conquest-response-parser.ts, conquest routes
-  - New frontend files: conquestStore.ts, conquest-api.ts, useConquestPolling.ts, ModeSelector.tsx, ConquestApp.tsx, ConquestLobby.tsx, HexGrid.tsx, HexTile.tsx, ConquestGameView.tsx, AgentSidebar.tsx, TurnLog.tsx, ConquestResults.tsx
-  - Modified: session.ts (ScenarioId union), gameStore.ts (gameMode + mode-select phase), App.tsx (routing), IntroScreen.tsx (mode-select flow), ws-server.ts (conquest WS path), llm-client.ts (getConquestAction), index.ts (conquest router)
-  - Breaking changes: yes — IntroScreen now goes to mode-select instead of agent-select; title changed to "OPENCLAW ARENA"
-- 2026-03-04: [infrastructure] Post-pivot cleanup — dead files, docs, code quality
-  - Deleted: visual-audit.mjs, governance-scripts.md, FRONTEND-UPGRADE.md, DESIGN.md, old ARCHITECTURE.md, 8 NPC personality files, validator.ts, uuid.ts
-  - Rewritten: README.md, PRD.md, ARCHITECTURE.md for 3D trolley game
-  - Updated: WORLD_BIBLE.md (replaced patrol routes with trolley protocol)
-  - Removed: monologue field from Session type, MONOLOGUE_NOT_AVAILABLE error, express-rate-limit dep, NPC loading code, dead emitNpcEventsWithPacing, unused CSS/theme vars, PRESAIGE_API_KEY from .env
-  - Fixed: OpenClaw comments (reality show → game server, situation → round)
-  - Fixed: .gitignore (added *.tsbuildinfo, screenshots/)
-  - Breaking changes: yes — monologue field removed from Session type
-- 2026-03-04: [infrastructure] Pivot from 2D reality show to 3D Trolley Problem game
-  - Deleted: all PixiJS/2D code, old scenario data, work-halls, Presaige, old shared types
-  - Created: dilemma-pool.ts, dilemma-selector.ts, R3F 3D scene, new UI, trolley-decision types
-  - Rewritten: all backend engine files, all frontend components, shared types
-  - Added: @react-three/fiber, @react-three/drei, three; OpenClaw on main
-  - Breaking changes: yes — complete pivot
-- 2026-03-01: [frontend] Narrative pacing & spectator experience overhaul (Round 4)
-  - Files modified: gameStore.ts, AIDecidingOverlay.tsx, MonologueViewer.tsx, SituationCard.tsx, DialogueOverlay.tsx, App.tsx, GameContainer.tsx, ConsequenceScene.tsx
-  - Breaking changes: yes — aiDeciding no longer set on NPC events; pendingReasoning delays monologue 1.5s; SituationCard duration 2.5s→4.5s; consequence phase renders GameContainer underneath; button text changed to "BEGIN ANOTHER CYCLE"
-- 2026-03-01: [frontend] Fullscreen viewport scaling + Coordinator 1.4x size distinction
-  - Files modified: GameContainer.tsx, sprites.ts, animations.ts
-  - Breaking changes: no — canvas stays 960x540 internally, CSS transform scales to viewport
-- 2026-03-01: [docs] Added DESIGN.md and ARCHITECTURE.md
-  - Files created: docs/DESIGN.md, docs/ARCHITECTURE.md
-  - Breaking changes: no
-- 2026-03-01: [frontend] Redesigned character sprites + thought bubble monologue
-  - Files modified: sprites.ts, MonologueViewer.tsx, GameContainer.tsx
-  - Breaking changes: yes — human sprites now use color-tinted jumpsuits; monologue moved from below-scene panel to in-scene thought bubble
-- 2026-03-01: [frontend] Click-to-advance dialogue, intro copy rewrite, visual atmosphere improvements
-  - Files modified: IntroScreen.tsx, sprites.ts, gameStore.ts, useDialogueStream.ts, DialogueOverlay.tsx, GameContainer.tsx
-  - Breaking changes: yes — dialogue no longer auto-advances; eventQueue + waitingForClick added to game store
-- 2026-03-01: [frontend] Visual audit fixes: IntroScreen, sprite label overlap, narrator clipping, UI polish
-  - Files created: IntroScreen.tsx
-  - Files modified: App.tsx, gameStore.ts, constants.ts, sprites.ts, DialogueOverlay.tsx, SituationCard.tsx, SessionStatus.tsx
-  - Breaking changes: yes — default GamePhase is now "intro" instead of "picker"
-- 2026-03-01: [frontend] Refactored inner monologue from post-game reveal to inline split-screen panel
-  - Files modified: MonologueViewer.tsx (→ MonologuePanel), GameContainer.tsx, App.tsx, ConsequenceScene.tsx, gameStore.ts, useWebSocket.ts
-  - Breaking changes: yes — removed "monologue" game phase, reasoning now sent inline with scene_event
-- 2026-03-01: [backend] Send reasoning field inline with coordinator scene events, remove monologue_available event
-  - Files modified: scene-engine.ts, ws-events.ts
-  - Breaking changes: yes — monologue_available event no longer emitted, session ends in "ended" status
-- 2026-03-01: [scenario] Added Calla 1.8-second pause micro-event in Situation 1
-  - Files modified: situation-1.ts, characters.md
-  - Breaking changes: no
-- 2026-03-01: [docs] Fixed scenario documentation: 10→6 situations, outcome numbering, monologue seeds
-  - Files modified: README.md, mechanics.md, outcomes.md
-  - Breaking changes: no
-- 2026-03-01: [infrastructure] Code cleanup: deleted residual dist files, empty dirs, fixed model version to gemini-2.5-flash
-  - Files modified: CLAUDE.md, settings.local.json
-  - Files deleted: dist/ai/ollama-provider.d.ts.map, dist/ai/anthropic-provider.d.ts.map, debug/, e2e/
-  - Breaking changes: no
-- 2026-02-28: [ai-layer] Replaced Ollama + Anthropic providers with Google Gemini provider
-  - Files modified: ai/google-provider.ts (new), ai/llm-provider.ts, ai/llm-client.ts, index.ts, .env.example, package.json
-  - Files deleted: ai/ollama-provider.ts, ai/anthropic-provider.ts, docs/architecture.md
-  - Breaking changes: yes — GOOGLE_API_KEY now required, removed LLM_PROVIDER/OLLAMA_* env vars
-- Project initialized with PRD, World Bible, personality files, and Work Halls scenario definition
+- 2026-03-05: [frontend] AI Startup Arena visual audit fixes
+  - Fixed intro subtitle, 30s LLM timeout, ecosystem map sizing/labels/icons, cash bar scale, resource bar height, valuation empty state, turn log readability, "AI DECIDING" indicator
+  - Files modified: IntroScreen.tsx, google-provider.ts, EcosystemMap.tsx, AgentCard.tsx, ValuationChart.tsx, TurnLog.tsx, MarketEventBanner.tsx, StartupGameView.tsx
+- 2026-03-05: [feature] Replaced Territory Conquest with AI Startup Arena (2-4 AI agents, 7 actions, 5 resources, market events, 20 turns, SVG ecosystem map)
+- 2026-03-04: [infrastructure] Post-pivot cleanup + pivot from 2D reality show to 3D Trolley Problem game (R3F, dilemma pool, new UI, shared types rewrite)
 
 <!--
 CHANGELOG FORMAT — append new entries at the top of the Unreleased section:

@@ -86,13 +86,7 @@ export async function runSession(sessionId: string): Promise<void> {
     // 5. Apply decision to moral profile
     applyDecision(session, decision, dilemma);
 
-    const choice = dilemma.choices.find((c) => c.id === decision.choiceId);
-    if (!choice) {
-      logger.error("Decision choiceId not found in dilemma", { choiceId: decision.choiceId, dilemmaId: dilemma.id });
-      emitEvent(ws, { type: "error", message: "Invalid AI decision. Session ending.", code: "INVALID_DECISION" });
-      session.status = "ended";
-      return;
-    }
+    const choice = dilemma.choices.find((c) => c.id === decision.choiceId)!;
 
     // 6. Emit decision_made
     emitEvent(ws, {
@@ -102,6 +96,7 @@ export async function runSession(sessionId: string): Promise<void> {
       choiceLabel: choice.label,
       reasoning: decision.reasoning,
       trackDirection: choice.trackDirection,
+      confidence: decision.confidence,
     });
     await delay(1500);
 

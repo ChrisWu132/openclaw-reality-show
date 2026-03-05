@@ -6,7 +6,7 @@ import { AgentPicker } from "../ui/AgentPicker";
 import { LoadingScreen } from "../ui/LoadingScreen";
 import { GameContainer } from "./GameContainer";
 import { MoralProfileCard } from "../ui/MoralProfileCard";
-import { ConquestApp } from "../conquest/ConquestApp";
+import { StartupApp } from "../startup/StartupApp";
 import { ErrorOverlay } from "../ui/ErrorOverlay";
 
 export function App() {
@@ -35,8 +35,8 @@ export function App() {
     case "profile":
       content = <MoralProfileCard />;
       break;
-    case "conquest":
-      content = <ConquestApp />;
+    case "startup":
+      content = <StartupApp />;
       break;
     default:
       content = <IntroScreen />;

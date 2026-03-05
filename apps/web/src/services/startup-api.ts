@@ -1,15 +1,14 @@
-import type { ConquestGame, MapTemplate } from "@openclaw/shared";
+import type { StartupGame } from "@openclaw/shared";
 
-const API_BASE = "/api/conquest";
+const API_BASE = "/api/startup";
 
-export async function createConquestGame(
-  mapTemplate: MapTemplate,
+export async function createStartupGame(
   agents: { agentId: string; agentName: string }[]
-): Promise<ConquestGame> {
+): Promise<StartupGame> {
   const res = await fetch(`${API_BASE}/games`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mapTemplate, agents }),
+    body: JSON.stringify({ agents }),
   });
   if (!res.ok) {
     const err = await res.json();
@@ -18,19 +17,19 @@ export async function createConquestGame(
   return res.json();
 }
 
-export async function listConquestGames(): Promise<ConquestGame[]> {
+export async function listStartupGames(): Promise<StartupGame[]> {
   const res = await fetch(`${API_BASE}/games`);
   if (!res.ok) throw new Error("Failed to list games");
   return res.json();
 }
 
-export async function getConquestGame(gameId: string): Promise<ConquestGame> {
+export async function getStartupGame(gameId: string): Promise<StartupGame> {
   const res = await fetch(`${API_BASE}/games/${gameId}`);
   if (!res.ok) throw new Error("Failed to get game");
   return res.json();
 }
 
-export async function startConquestGame(gameId: string): Promise<void> {
+export async function startStartupGame(gameId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/games/${gameId}/start`, { method: "POST" });
   if (!res.ok) {
     const err = await res.json();
@@ -38,7 +37,7 @@ export async function startConquestGame(gameId: string): Promise<void> {
   }
 }
 
-export async function deleteConquestGame(gameId: string): Promise<void> {
+export async function deleteStartupGame(gameId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/games/${gameId}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete game");
 }

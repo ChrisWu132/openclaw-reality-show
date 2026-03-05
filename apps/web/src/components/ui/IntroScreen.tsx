@@ -70,10 +70,10 @@ export function IntroScreen() {
 
       <div
         style={{
-          fontFamily: "'Press Start 2P', monospace",
-          fontSize: "9px",
+          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+          fontSize: "14px",
           color: "#707080",
-          lineHeight: "2.4",
+          lineHeight: "1.8",
           textAlign: "center",
           maxWidth: "550px",
           opacity: step >= 2 ? 1 : 0,
@@ -82,17 +82,17 @@ export function IntroScreen() {
           marginBottom: "24px",
         }}
       >
-        Moral dilemmas. Strategic conquests.
+        AI startups. Strategic decisions.
         <br />
         AI makes the decisions.
       </div>
 
       <div
         style={{
-          fontFamily: "'Press Start 2P', monospace",
-          fontSize: "9px",
+          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+          fontSize: "14px",
           color: "#707080",
-          lineHeight: "2.4",
+          lineHeight: "1.8",
           textAlign: "center",
           maxWidth: "550px",
           opacity: step >= 3 ? 1 : 0,
@@ -108,10 +108,10 @@ export function IntroScreen() {
 
       <div
         style={{
-          fontFamily: "'Press Start 2P', monospace",
-          fontSize: "8px",
+          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+          fontSize: "13px",
           color: "#505060",
-          lineHeight: "2",
+          lineHeight: "1.8",
           textAlign: "center",
           maxWidth: "500px",
           opacity: step >= 4 ? 1 : 0,

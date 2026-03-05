@@ -6,10 +6,13 @@ interface FigureGroupProps {
   entity: TrackEntity;
   basePosition: [number, number, number];
   hit?: boolean;
+  hideLabel?: boolean;
 }
 
-export function FigureGroup({ entity, basePosition, hit = false }: FigureGroupProps) {
+export function FigureGroup({ entity, basePosition, hit = false, hideLabel = false }: FigureGroupProps) {
   const [bx, by, bz] = basePosition;
+  // Offset left group label higher to prevent overlap at common camera angles
+  const labelYOffset = entity.trackDirection === "left" ? 2.8 : 2.5;
   const figures = [];
 
   for (let i = 0; i < Math.min(entity.count, 8); i++) {
@@ -29,8 +32,8 @@ export function FigureGroup({ entity, basePosition, hit = false }: FigureGroupPr
   return (
     <group>
       {figures}
-      <Html
-        position={[bx, by + 2.5, bz]}
+      {!hideLabel && <Html
+        position={[bx, by + labelYOffset, bz]}
         center
         style={{
           color: "#e8e8e0",
@@ -45,7 +48,7 @@ export function FigureGroup({ entity, basePosition, hit = false }: FigureGroupPr
         }}
       >
         {entity.visualLabel}
-      </Html>
+      </Html>}
     </group>
   );
 }

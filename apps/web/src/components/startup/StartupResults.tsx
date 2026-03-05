@@ -1,11 +1,22 @@
-import { useConquestStore } from "../../stores/conquestStore";
+import { useStartupStore } from "../../stores/startupStore";
 import { useGameStore } from "../../stores/gameStore";
-import { HexGrid } from "./HexGrid";
+import { EcosystemMap } from "./EcosystemMap";
+import { ValuationChart } from "./ValuationChart";
 import { COLORS } from "../../styles/theme";
 
-export function ConquestResults() {
-  const activeGame = useConquestStore((s) => s.activeGame);
-  const conquestReset = useConquestStore((s) => s.reset);
+function formatCash(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
+}
+
+function calcValuation(r: { users: number; model: number; compute: number; data: number }): number {
+  return r.users * (r.model / 10) * (1 + (r.compute + r.data) / 200);
+}
+
+export function StartupResults() {
+  const activeGame = useStartupStore((s) => s.activeGame);
+  const startupReset = useStartupStore((s) => s.reset);
   const setMainPhase = useGameStore((s) => s.setPhase);
   const font = "'Press Start 2P', monospace";
 
@@ -18,12 +29,12 @@ export function ConquestResults() {
   }
 
   const winner = activeGame.agents.find((a) => a.agentId === activeGame.winner);
-  const total = activeGame.territories.length;
 
   const winConditionLabel: Record<string, string> = {
-    territorial_majority: "TERRITORIAL MAJORITY",
+    valuation_threshold: "REACHED $100M VALUATION",
+    acquisition: "ACQUISITION",
     last_standing: "LAST STANDING",
-    turn_limit: "TURN LIMIT REACHED",
+    turn_limit: "HIGHEST VALUATION AT Q20",
   };
 
   return (
@@ -40,9 +51,8 @@ export function ConquestResults() {
         padding: "40px",
       }}
     >
-      {/* Winner Announcement */}
       <div style={{ fontSize: "10px", color: COLORS.textSecondary, letterSpacing: "0.2em", marginBottom: "16px" }}>
-        GAME OVER — TURN {activeGame.currentTurn}
+        GAME OVER — QUARTER {activeGame.currentTurn}
       </div>
 
       {winner && (
@@ -63,19 +73,21 @@ export function ConquestResults() {
         {winConditionLabel[activeGame.winCondition || ""] || activeGame.winCondition}
       </div>
 
-      {/* Final Map */}
-      <div style={{ width: "100%", maxWidth: "500px", marginBottom: "40px" }}>
-        <HexGrid
-          game={activeGame}
-          selectedHex={null}
-          onHexClick={() => {}}
-        />
+      {/* Ecosystem Map */}
+      <div style={{ width: "100%", maxWidth: "500px", marginBottom: "30px" }}>
+        <EcosystemMap agents={activeGame.agents} />
+      </div>
+
+      {/* Valuation Chart */}
+      <div style={{ width: "100%", maxWidth: "400px", marginBottom: "30px" }}>
+        <ValuationChart game={activeGame} />
       </div>
 
       {/* Per-Agent Stats */}
       <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", justifyContent: "center", marginBottom: "40px" }}>
         {activeGame.agents.map((agent) => {
-          const owned = activeGame.territories.filter((t) => t.owner === agent.agentId).length;
+          const r = agent.resources;
+          const val = calcValuation(r);
           const isWinner = agent.agentId === activeGame.winner;
           return (
             <div
@@ -84,16 +96,19 @@ export function ConquestResults() {
                 padding: "16px 20px",
                 background: "rgba(0,0,0,0.4)",
                 border: `1px solid ${isWinner ? agent.color : COLORS.textSecondary + "30"}`,
-                minWidth: "160px",
+                minWidth: "180px",
                 textAlign: "center",
               }}
             >
               <div style={{ fontSize: "8px", color: agent.color, marginBottom: "8px" }}>
                 {agent.agentName}
               </div>
-              <div style={{ fontSize: "7px", color: COLORS.textSecondary, lineHeight: "2" }}>
-                <div>Territories: {owned}/{total}</div>
-                <div>Status: {agent.status === "eliminated" ? `ELIMINATED T${agent.eliminatedOnTurn}` : "ACTIVE"}</div>
+              <div style={{ fontSize: "6px", color: COLORS.textSecondary, lineHeight: "2.2" }}>
+                <div>Valuation: {formatCash(val)}</div>
+                <div>Users: {r.users.toLocaleString()}</div>
+                <div>Model: {r.model} | Compute: {r.compute} | Data: {r.data}</div>
+                <div>Cash: {formatCash(r.cash)}</div>
+                <div>Status: {agent.status === "bankrupt" ? `BANKRUPT Q${agent.eliminatedOnTurn}` : agent.status === "acquired" ? `ACQUIRED Q${agent.eliminatedOnTurn}` : "ACTIVE"}</div>
                 {isWinner && <div style={{ color: agent.color, marginTop: "4px" }}>WINNER</div>}
               </div>
             </div>
@@ -101,10 +116,10 @@ export function ConquestResults() {
         })}
       </div>
 
-      {/* Back Buttons */}
+      {/* Buttons */}
       <div style={{ display: "flex", gap: "16px" }}>
         <button
-          onClick={() => conquestReset()}
+          onClick={() => startupReset()}
           style={{
             fontFamily: font,
             fontSize: "8px",
@@ -115,11 +130,11 @@ export function ConquestResults() {
             cursor: "pointer",
           }}
         >
-          NEW CONQUEST
+          NEW GAME
         </button>
         <button
           onClick={() => {
-            conquestReset();
+            startupReset();
             setMainPhase("mode-select");
           }}
           style={{

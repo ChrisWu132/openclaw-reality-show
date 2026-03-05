@@ -1,35 +1,33 @@
 import { useState, useEffect } from "react";
-import type { ConquestGame, MapTemplate } from "@openclaw/shared";
-import { useConquestStore } from "../../stores/conquestStore";
+import type { StartupGame } from "@openclaw/shared";
+import { useStartupStore } from "../../stores/startupStore";
 import { useGameStore } from "../../stores/gameStore";
 import {
-  createConquestGame,
-  listConquestGames,
-  startConquestGame as apiStartGame,
-} from "../../services/conquest-api";
+  createStartupGame,
+  listStartupGames,
+  startStartupGame as apiStartGame,
+} from "../../services/startup-api";
 import { COLORS } from "../../styles/theme";
 
-const ACCENT_TEAL = "#4ad9b1";
+const ACCENT = "#4ad9b1";
 
-export function ConquestLobby() {
-  const { setPhase, setActiveGame, setGames, games } = useConquestStore();
+export function StartupLobby() {
+  const { setPhase, setActiveGame, setGames, games } = useStartupStore();
   const setMainPhase = useGameStore((s) => s.setPhase);
   const [loading, setLoading] = useState(false);
-  const [mapTemplate, setMapTemplate] = useState<MapTemplate>("hex19");
   const [agentInputs, setAgentInputs] = useState([
-    { agentId: "", agentName: "Agent Alpha" },
-    { agentId: "", agentName: "Agent Beta" },
+    { agentId: "", agentName: "NeuralForge" },
+    { agentId: "", agentName: "DeepScale AI" },
   ]);
 
   useEffect(() => {
-    listConquestGames().then(setGames).catch(() => {});
+    listStartupGames().then(setGames).catch(() => {});
   }, [setGames]);
 
   async function handleCreate() {
     const validAgents = agentInputs.filter((a) => a.agentName.trim());
     if (validAgents.length < 2) return;
 
-    // Auto-generate IDs for agents that don't have one
     const agents = validAgents.map((a) => ({
       agentId: a.agentId || crypto.randomUUID(),
       agentName: a.agentName.trim(),
@@ -37,9 +35,8 @@ export function ConquestLobby() {
 
     setLoading(true);
     try {
-      const game = await createConquestGame(mapTemplate, agents);
+      const game = await createStartupGame(agents);
       setActiveGame(game);
-      // Auto-start
       await apiStartGame(game.id);
       setPhase("watching");
     } catch (err) {
@@ -49,14 +46,15 @@ export function ConquestLobby() {
     }
   }
 
-  function watchGame(game: ConquestGame) {
+  function watchGame(game: StartupGame) {
     setActiveGame(game);
     setPhase(game.status === "finished" ? "finished" : "watching");
   }
 
   function addAgent() {
     if (agentInputs.length >= 4) return;
-    setAgentInputs([...agentInputs, { agentId: "", agentName: `Agent ${["Alpha", "Beta", "Gamma", "Delta"][agentInputs.length]}` }]);
+    const names = ["NeuralForge", "DeepScale AI", "SynthMind", "Cognito Labs"];
+    setAgentInputs([...agentInputs, { agentId: "", agentName: names[agentInputs.length] || "Agent" }]);
   }
 
   function removeAgent(idx: number) {
@@ -102,47 +100,22 @@ export function ConquestLobby() {
         {"<"} BACK TO MODES
       </button>
 
-      <div style={{ fontSize: "16px", color: ACCENT_TEAL, letterSpacing: "0.15em", marginBottom: "40px", textAlign: "center" }}>
-        TERRITORY CONQUEST
+      <div style={{ fontSize: "16px", color: ACCENT, letterSpacing: "0.15em", marginBottom: "40px", textAlign: "center" }}>
+        AI STARTUP ARENA
       </div>
 
-      {/* Create Game Form */}
       <div style={{ maxWidth: "500px", margin: "0 auto", width: "100%" }}>
         <div style={{ fontSize: "8px", color: COLORS.textSecondary, marginBottom: "16px" }}>NEW GAME</div>
 
-        {/* Map Template */}
-        <div style={{ marginBottom: "20px" }}>
-          <label style={{ fontSize: "7px", color: COLORS.textSecondary, display: "block", marginBottom: "8px" }}>MAP SIZE</label>
-          <div style={{ display: "flex", gap: "12px" }}>
-            {(["hex19", "hex37"] as MapTemplate[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setMapTemplate(t)}
-                style={{
-                  fontFamily: font,
-                  fontSize: "8px",
-                  padding: "8px 16px",
-                  background: mapTemplate === t ? `${ACCENT_TEAL}20` : "transparent",
-                  border: `1px solid ${mapTemplate === t ? ACCENT_TEAL : COLORS.textSecondary + "40"}`,
-                  color: mapTemplate === t ? ACCENT_TEAL : COLORS.textSecondary,
-                  cursor: "pointer",
-                }}
-              >
-                {t === "hex19" ? "19 HEX (QUICK)" : "37 HEX (LONGER)"}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Agent Inputs */}
         <div style={{ marginBottom: "20px" }}>
-          <label style={{ fontSize: "7px", color: COLORS.textSecondary, display: "block", marginBottom: "8px" }}>AGENTS</label>
+          <label style={{ fontSize: "7px", color: COLORS.textSecondary, display: "block", marginBottom: "8px" }}>AI FOUNDERS</label>
           {agentInputs.map((agent, idx) => (
             <div key={idx} style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "center" }}>
               <input
                 value={agent.agentName}
                 onChange={(e) => updateAgent(idx, "agentName", e.target.value)}
-                placeholder="Name"
+                placeholder="Company Name"
                 style={{
                   fontFamily: font,
                   fontSize: "8px",
@@ -191,29 +164,28 @@ export function ConquestLobby() {
               style={{
                 fontFamily: font,
                 fontSize: "7px",
-                color: ACCENT_TEAL,
+                color: ACCENT,
                 background: "transparent",
-                border: `1px dashed ${ACCENT_TEAL}40`,
+                border: `1px dashed ${ACCENT}40`,
                 padding: "6px 12px",
                 cursor: "pointer",
                 width: "100%",
               }}
             >
-              + ADD AGENT
+              + ADD FOUNDER
             </button>
           )}
         </div>
 
-        {/* Start Button */}
         <button
           onClick={handleCreate}
           disabled={loading}
           style={{
             fontFamily: font,
             fontSize: "10px",
-            color: ACCENT_TEAL,
+            color: ACCENT,
             background: "transparent",
-            border: `1px solid ${ACCENT_TEAL}60`,
+            border: `1px solid ${ACCENT}60`,
             padding: "14px 32px",
             cursor: loading ? "wait" : "pointer",
             width: "100%",
@@ -223,20 +195,20 @@ export function ConquestLobby() {
           }}
           onMouseEnter={(e) => {
             if (!loading) {
-              e.currentTarget.style.borderColor = ACCENT_TEAL;
-              e.currentTarget.style.boxShadow = `0 0 25px ${ACCENT_TEAL}30`;
+              e.currentTarget.style.borderColor = ACCENT;
+              e.currentTarget.style.boxShadow = `0 0 25px ${ACCENT}30`;
             }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = `${ACCENT_TEAL}60`;
+            e.currentTarget.style.borderColor = `${ACCENT}60`;
             e.currentTarget.style.boxShadow = "none";
           }}
         >
-          {loading ? "CREATING..." : "CREATE & START GAME"}
+          {loading ? "LAUNCHING..." : "LAUNCH ARENA"}
         </button>
       </div>
 
-      {/* Active Games List */}
+      {/* Existing Games */}
       {games.length > 0 && (
         <div style={{ maxWidth: "500px", margin: "40px auto 0", width: "100%" }}>
           <div style={{ fontSize: "8px", color: COLORS.textSecondary, marginBottom: "16px" }}>EXISTING GAMES</div>
@@ -260,15 +232,13 @@ export function ConquestLobby() {
                 textAlign: "left",
               }}
             >
-              <span>
-                {game.mapTemplate.toUpperCase()} - {game.agents.map((a) => a.agentName).join(" vs ")}
-              </span>
+              <span>{game.agents.map((a) => a.agentName).join(" vs ")}</span>
               <span
                 style={{
-                  color: game.status === "running" ? ACCENT_TEAL : game.status === "finished" ? COLORS.textSecondary : COLORS.accentOrange,
+                  color: game.status === "running" ? ACCENT : game.status === "finished" ? COLORS.textSecondary : COLORS.accentOrange,
                 }}
               >
-                {game.status.toUpperCase()} {game.status === "running" ? `T${game.currentTurn}` : ""}
+                {game.status.toUpperCase()} {game.status === "running" ? `Q${game.currentTurn}` : ""}
               </span>
             </button>
           ))}

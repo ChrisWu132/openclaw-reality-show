@@ -37,6 +37,7 @@ export interface DecisionMadeEvent {
   choiceLabel: string;
   reasoning: string;
   trackDirection: "left" | "right";
+  confidence: number;
 }
 
 export interface ConsequenceEvent {

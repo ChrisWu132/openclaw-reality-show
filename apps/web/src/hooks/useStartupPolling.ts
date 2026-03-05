@@ -1,17 +1,13 @@
 import { useEffect, useRef } from "react";
-import { useConquestStore } from "../stores/conquestStore";
-import { getConquestGame } from "../services/conquest-api";
+import { useStartupStore } from "../stores/startupStore";
+import { getStartupGame } from "../services/startup-api";
 
 const POLL_INTERVAL = 3000;
 
-/**
- * Polls the game state every 3s when watching a game.
- * Also opens a WebSocket for instant turn notifications.
- */
-export function useConquestPolling(gameId: string | null): void {
-  const setActiveGame = useConquestStore((s) => s.setActiveGame);
-  const setPhase = useConquestStore((s) => s.setPhase);
-  const setError = useConquestStore((s) => s.setError);
+export function useStartupPolling(gameId: string | null): void {
+  const setActiveGame = useStartupStore((s) => s.setActiveGame);
+  const setPhase = useStartupStore((s) => s.setPhase);
+  const setError = useStartupStore((s) => s.setError);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -21,12 +17,11 @@ export function useConquestPolling(gameId: string | null): void {
 
     async function poll() {
       try {
-        const game = await getConquestGame(gameId!);
+        const game = await getStartupGame(gameId!);
         if (cancelled) return;
         setActiveGame(game);
         if (game.status === "finished") {
           setPhase("finished");
-          // Stop polling
           if (timerRef.current) clearInterval(timerRef.current);
         }
       } catch (err) {
@@ -34,15 +29,12 @@ export function useConquestPolling(gameId: string | null): void {
       }
     }
 
-    // Initial fetch
     poll();
-
-    // Poll interval
     timerRef.current = setInterval(poll, POLL_INTERVAL);
 
-    // Optional WebSocket for instant updates
+    // WebSocket for instant updates
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${protocol}://${window.location.host}/conquest/${gameId}`;
+    const wsUrl = `${protocol}://${window.location.host}/startup/${gameId}`;
     let ws: WebSocket | null = null;
 
     try {
@@ -53,7 +45,7 @@ export function useConquestPolling(gameId: string | null): void {
           if (event.game) {
             setActiveGame(event.game);
           }
-          if (event.type === "conquest_game_over") {
+          if (event.type === "startup_game_over") {
             setPhase("finished");
             if (timerRef.current) clearInterval(timerRef.current);
           }
@@ -62,7 +54,7 @@ export function useConquestPolling(gameId: string | null): void {
         }
       };
     } catch {
-      // WS connection failure is fine — polling is the primary mechanism
+      // WS failure is fine — polling is primary
     }
 
     return () => {

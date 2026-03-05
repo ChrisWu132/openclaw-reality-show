@@ -12,9 +12,9 @@ export function ModeSelector() {
     setPhase("agent-select");
   }
 
-  function selectConquest() {
-    setGameMode("conquest");
-    setPhase("conquest");
+  function selectStartup() {
+    setGameMode("startup");
+    setPhase("startup");
   }
 
   return (
@@ -62,12 +62,12 @@ export function ModeSelector() {
           onClick={selectTrolley}
         />
 
-        {/* Territory Conquest Card */}
+        {/* AI Startup Arena Card */}
         <ModeCard
-          title="TERRITORY CONQUEST"
-          description="2-4 AI agents battle on a hex grid. Expand, attack, dominate."
+          title="AI STARTUP ARENA"
+          description="2-4 AI founders compete to build the most valuable AI company."
           accentColor={ACCENT_TEAL}
-          onClick={selectConquest}
+          onClick={selectStartup}
         />
       </div>
     </div>
