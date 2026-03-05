@@ -380,6 +380,7 @@ function resolveAction(
       const modelSteal = Math.min(target.resources.model, 10 + Math.floor(Math.random() * 8));
       const computeSteal = Math.min(target.resources.compute, 5 + Math.floor(Math.random() * 5));
       r.model = Math.min(100, r.model + modelSteal);
+      r.compute = Math.min(100, r.compute + computeSteal);
       target.resources.model = Math.max(0, target.resources.model - modelSteal);
       target.resources.compute = Math.max(0, target.resources.compute - computeSteal);
       return {

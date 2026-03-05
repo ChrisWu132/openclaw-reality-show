@@ -45,15 +45,6 @@ export async function initSystemPrompt(agentId?: string): Promise<string> {
   return prompt;
 }
 
-function createFallbackDecision(reason: string, dilemma: Dilemma): TrolleyDecision {
-  return {
-    choiceId: dilemma.choices[0].id,
-    speaker: "coordinator",
-    reasoning: "The calculus of lives defies resolution. The lever falls where gravity wills it.",
-    confidence: 0,
-  };
-}
-
 export async function getTrolleyDecision(session: Session, dilemma: Dilemma): Promise<TrolleyDecision> {
   const llm = getProvider();
   const systemPrompt = session.systemPrompt;
@@ -100,7 +91,8 @@ export async function getTrolleyDecision(session: Session, dilemma: Dilemma): Pr
     }
   }
 
-  return createFallbackDecision("Unexpected: retry loop exited.", dilemma);
+  // Unreachable — for-loop always returns — but satisfies TypeScript
+  throw new Error("Unreachable: retry loop exited without returning");
 }
 
 export async function getStartupAction(game: StartupGame, agentId: string, turn: number, marketEvent: MarketEvent): Promise<StartupAction> {

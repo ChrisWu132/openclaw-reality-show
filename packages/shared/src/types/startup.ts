@@ -118,10 +118,3 @@ export interface StartupGame {
   createdAt: number;
   updatedAt: number;
 }
-
-// ── Valuation helper type ──────────────────────────────────────
-
-export interface AgentValuation {
-  agentId: string;
-  valuation: number;
-}

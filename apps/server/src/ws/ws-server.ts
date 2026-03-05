@@ -14,7 +14,7 @@ export function getSessionWs(sessionId: string): WebSocket | undefined {
   return sessionConnections.get(sessionId);
 }
 
-// ── Conquest game connections (1:many) ──────────────────────────
+// ── Startup game connections (1:many) ───────────────────────────
 const startupConnections = new Map<string, Set<WebSocket>>();
 
 export function broadcastStartupEvent(gameId: string, event: StartupWSEvent): void {
@@ -60,8 +60,8 @@ export function setupWebSocketServer(server: Server): void {
       return;
     }
 
-    // Conquest game: /startup/:gameId
-    const startupMatch = url.pathname.match(/^\/conquest\/(.+)$/);
+    // Startup game: /startup/:gameId
+    const startupMatch = url.pathname.match(/^\/startup\/(.+)$/);
     if (startupMatch) {
       const gameId = startupMatch[1];
       wss.handleUpgrade(request, socket, head, (ws) => {
@@ -100,7 +100,7 @@ export function setupWebSocketServer(server: Server): void {
       }, 2000);
 
     } else if (ctx.type === "startup") {
-      // Conquest game — 1:many
+      // Startup game — 1:many
       const gameId = ctx.id;
       if (!startupConnections.has(gameId)) {
         startupConnections.set(gameId, new Set());
