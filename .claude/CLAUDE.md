@@ -85,6 +85,12 @@ Different agents make different decisions. After each session, the decision log 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-04: [feature] Added Territory Conquest game mode — 2D hex-grid strategy where 2-4 AI agents compete
+  - New shared types: conquest.ts, conquest-ws-events.ts, conquest constants
+  - New server files: hex-utils.ts, map-templates.ts, conquest-store.ts, conquest-engine.ts, conquest-prompt-builder.ts, conquest-response-parser.ts, conquest routes
+  - New frontend files: conquestStore.ts, conquest-api.ts, useConquestPolling.ts, ModeSelector.tsx, ConquestApp.tsx, ConquestLobby.tsx, HexGrid.tsx, HexTile.tsx, ConquestGameView.tsx, AgentSidebar.tsx, TurnLog.tsx, ConquestResults.tsx
+  - Modified: session.ts (ScenarioId union), gameStore.ts (gameMode + mode-select phase), App.tsx (routing), IntroScreen.tsx (mode-select flow), ws-server.ts (conquest WS path), llm-client.ts (getConquestAction), index.ts (conquest router)
+  - Breaking changes: yes — IntroScreen now goes to mode-select instead of agent-select; title changed to "OPENCLAW ARENA"
 - 2026-03-04: [infrastructure] Post-pivot cleanup — dead files, docs, code quality
   - Deleted: visual-audit.mjs, governance-scripts.md, FRONTEND-UPGRADE.md, DESIGN.md, old ARCHITECTURE.md, 8 NPC personality files, validator.ts, uuid.ts
   - Rewritten: README.md, PRD.md, ARCHITECTURE.md for 3D trolley game

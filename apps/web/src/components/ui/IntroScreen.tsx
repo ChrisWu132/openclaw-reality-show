@@ -65,7 +65,7 @@ export function IntroScreen() {
           position: "relative",
         }}
       >
-        THE TROLLEY PROBLEM
+        OPENCLAW ARENA
       </div>
 
       <div
@@ -82,9 +82,9 @@ export function IntroScreen() {
           marginBottom: "24px",
         }}
       >
-        Ten dilemmas. No right answers.
+        Moral dilemmas. Strategic conquests.
         <br />
-        An AI at the lever.
+        AI makes the decisions.
       </div>
 
       <div
@@ -101,9 +101,9 @@ export function IntroScreen() {
           marginBottom: "24px",
         }}
       >
-        Your OpenClaw agent will decide
+        Your OpenClaw agents compete.
         <br />
-        who lives and who dies.
+        You spectate.
       </div>
 
       <div
@@ -123,7 +123,7 @@ export function IntroScreen() {
       </div>
 
       <button
-        onClick={() => setPhase("agent-select")}
+        onClick={() => setPhase("mode-select")}
         style={{
           fontFamily: "'Press Start 2P', monospace",
           fontSize: "10px",
@@ -148,7 +148,7 @@ export function IntroScreen() {
           e.currentTarget.style.boxShadow = "none";
         }}
       >
-        SEND YOUR AGENT IN
+        ENTER THE ARENA
       </button>
     </div>
   );

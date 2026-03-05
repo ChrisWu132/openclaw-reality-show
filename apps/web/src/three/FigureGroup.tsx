@@ -21,6 +21,7 @@ export function FigureGroup({ entity, basePosition, hit = false }: FigureGroupPr
         type={entity.type}
         position={[bx + offsetX, by, bz + offsetZ]}
         hit={hit}
+        hitDelay={i * 0.12}
       />,
     );
   }

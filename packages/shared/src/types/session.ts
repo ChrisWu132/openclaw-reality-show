@@ -1,6 +1,6 @@
 import type { MoralDimension } from "./dilemma";
 
-export type ScenarioId = "trolley-problem";
+export type ScenarioId = "trolley-problem" | "territory-conquest";
 export type SessionStatus = "created" | "running" | "ended";
 
 export interface MoralProfile {

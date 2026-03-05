@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import { Environment } from "./Environment";
 import { Track } from "./Track";
 import { Trolley } from "./Trolley";
@@ -8,41 +9,73 @@ import { Lever } from "./Lever";
 import { useGameStore, type ScenePhase } from "../stores/gameStore";
 import * as THREE from "three";
 
+// Reusable vectors to avoid per-frame allocations
+const _targetPos = new THREE.Vector3();
+const _targetLook = new THREE.Vector3();
+
 function CameraController({ scenePhase }: { scenePhase: ScenePhase }) {
   const { camera } = useThree();
-  const targetRef = useRef(new THREE.Vector3(0, 10, 14));
+  const posRef = useRef(new THREE.Vector3(0, 10, 14));
   const lookRef = useRef(new THREE.Vector3(0, 0, -3));
+  const shakeRef = useRef(0);
+  const prevPhaseRef = useRef<ScenePhase>(scenePhase);
 
   useFrame((_, delta) => {
-    let pos: [number, number, number];
-    let look: [number, number, number] = [0, 0, -3];
+    // Detect consequence phase entry for camera shake
+    if (scenePhase === "consequence" && prevPhaseRef.current !== "consequence") {
+      shakeRef.current = 0.5; // 0.5s of shake
+    }
+    prevPhaseRef.current = scenePhase;
+
+    let px: number, py: number, pz: number;
+    let lx = 0, ly = 0, lz = -3;
 
     switch (scenePhase) {
       case "idle":
       case "round_start":
-        pos = [0, 10, 14];
-        look = [0, 0, -2];
+        px = 0; py = 10; pz = 14;
+        lz = -2;
         break;
       case "dilemma":
       case "deciding":
-        pos = [0, 9, 13];
-        look = [0, 0, -3];
+        px = 0; py = 9; pz = 13;
         break;
       case "decision":
-        pos = [2, 10, 14];
-        look = [0, 0, -4];
+        px = 2; py = 10; pz = 14;
+        lz = -4;
         break;
       case "consequence":
-        pos = [0, 11, 12];
-        look = [0, 0, -4];
+        px = 0; py = 11; pz = 12;
+        lz = -4;
         break;
       default:
-        pos = [0, 10, 14];
+        px = 0; py = 10; pz = 14;
     }
 
-    targetRef.current.set(...pos);
-    lookRef.current.lerp(new THREE.Vector3(...look), delta * 2);
-    camera.position.lerp(targetRef.current, delta * 1.5);
+    _targetPos.set(px, py, pz);
+    _targetLook.set(lx, ly, lz);
+
+    // Frame-rate independent lerp
+    const posT = 1 - Math.pow(0.05, delta);
+    const lookT = 1 - Math.pow(0.05, delta);
+
+    posRef.current.lerp(_targetPos, posT);
+    lookRef.current.lerp(_targetLook, lookT);
+
+    // Apply camera shake
+    let shakeX = 0, shakeY = 0;
+    if (shakeRef.current > 0) {
+      shakeRef.current = Math.max(0, shakeRef.current - delta);
+      const amplitude = 0.15 * (shakeRef.current / 0.5); // exponential decay
+      shakeX = (Math.random() - 0.5) * 2 * amplitude;
+      shakeY = (Math.random() - 0.5) * 2 * amplitude;
+    }
+
+    camera.position.set(
+      posRef.current.x + shakeX,
+      posRef.current.y + shakeY,
+      posRef.current.z,
+    );
     camera.lookAt(lookRef.current);
   });
 
@@ -92,6 +125,11 @@ export function TrolleyScene() {
           />
         );
       })}
+
+      <EffectComposer>
+        <Bloom luminanceThreshold={0.8} intensity={0.4} mipmapBlur />
+        <Vignette offset={0.3} darkness={0.6} />
+      </EffectComposer>
     </Canvas>
   );
 }

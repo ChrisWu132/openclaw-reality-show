@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import type { Dilemma, MoralProfile, DecisionLogEntry } from "@openclaw/shared";
 
-export type GamePhase = "intro" | "agent-select" | "connecting" | "playing" | "profile";
+export type GameMode = "trolley" | "conquest" | null;
+export type GamePhase = "intro" | "mode-select" | "agent-select" | "connecting" | "playing" | "profile" | "conquest";
 export type ScenePhase = "idle" | "round_start" | "dilemma" | "deciding" | "decision" | "consequence";
 
 interface GameState {
+  gameMode: GameMode;
   phase: GamePhase;
   sessionId: string | null;
   wsUrl: string | null;
@@ -41,6 +43,7 @@ interface GameState {
   waitingForClick: boolean;
 
   // Actions
+  setGameMode: (mode: GameMode) => void;
   setPhase: (phase: GamePhase) => void;
   setWsUrl: (url: string) => void;
   setAgent: (agentId: string, agentName: string) => void;
@@ -124,6 +127,7 @@ function tryProcessNext(state: GameState, set: (partial: Partial<GameState>) => 
 }
 
 const initialState = {
+  gameMode: null as GameMode,
   phase: "intro" as GamePhase,
   sessionId: null as string | null,
   wsUrl: null as string | null,
@@ -146,6 +150,7 @@ const initialState = {
 export const useGameStore = create<GameState>((set) => ({
   ...initialState,
 
+  setGameMode: (gameMode) => set({ gameMode }),
   setPhase: (phase) => set({ phase }),
   setWsUrl: (url) => set({ wsUrl: url }),
   setAgent: (agentId, agentName) => set({ agentId, agentName }),

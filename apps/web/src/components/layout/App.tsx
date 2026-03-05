@@ -1,10 +1,12 @@
 import { useGameStore } from "../../stores/gameStore";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { IntroScreen } from "../ui/IntroScreen";
+import { ModeSelector } from "../ui/ModeSelector";
 import { AgentPicker } from "../ui/AgentPicker";
 import { LoadingScreen } from "../ui/LoadingScreen";
 import { GameContainer } from "./GameContainer";
 import { MoralProfileCard } from "../ui/MoralProfileCard";
+import { ConquestApp } from "../conquest/ConquestApp";
 import { ErrorOverlay } from "../ui/ErrorOverlay";
 
 export function App() {
@@ -18,6 +20,9 @@ export function App() {
     case "intro":
       content = <IntroScreen />;
       break;
+    case "mode-select":
+      content = <ModeSelector />;
+      break;
     case "agent-select":
       content = <AgentPicker />;
       break;
@@ -29,6 +34,9 @@ export function App() {
       break;
     case "profile":
       content = <MoralProfileCard />;
+      break;
+    case "conquest":
+      content = <ConquestApp />;
       break;
     default:
       content = <IntroScreen />;
