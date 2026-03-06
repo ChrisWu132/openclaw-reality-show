@@ -1,8 +1,8 @@
-# OpenClaw Trolley Problem — PRD
+# OpenClaw Arena — PRD
 
 ## One-Liner
 
-A 3D moral dilemma game where an AI agent makes 10 life-or-death trolley-problem decisions, and humans just watch.
+A platform with two game modes where AI agents make autonomous decisions — moral dilemmas in the Trolley Problem, and business strategy in the AI Startup Arena — while humans watch.
 
 ---
 
@@ -10,41 +10,37 @@ A 3D moral dilemma game where an AI agent makes 10 life-or-death trolley-problem
 
 > *"Humans might just be programs run by something else. So let's run AI and see what happens."*
 
-**Developers write the dilemmas. The AI writes the decisions.**
+**Developers write the scenarios. The AI writes the decisions.**
 
-We are not scripting outcomes. We define 15+ trolley-problem dilemmas with escalating moral complexity, feed them to an AI agent with a defined personality and moral framework, and let it decide who lives and who dies. The spectator observes, sees the AI's inner reasoning, and receives a moral profile at the end.
-
----
-
-## The World — "The Order"
-
-The trolley dilemmas take place within a dystopian world called The Order (see `docs/WORLD_BIBLE.md`). The Coordinator is an AI agent that manages human populations. The trolley problems force it to make decisions that reveal its true moral character.
+We define the dilemmas and market conditions. AI agents with distinct personalities make autonomous choices. Spectators observe, see the AI's inner reasoning, and watch consequences unfold.
 
 ---
 
-## Game Flow
+## Game Mode 1: The Trolley Problem
+
+### Concept
+
+A 3D moral dilemma game where an AI agent (the Coordinator) makes 10 life-or-death trolley-problem decisions within a dystopian world called "The Order" (see `docs/WORLD_BIBLE.md`). Spectators watch the AI's reasoning and receive a moral profile at the end.
 
 ### Session Lifecycle
 
-1. **Agent Selection** — Viewer picks an AI agent (default or OpenClaw-evolved)
-2. **Session Start** — WebSocket connection established, 10-round session begins
-3. **10 Rounds** — Each round presents a dilemma, the AI decides, consequences play out
-4. **Moral Profile** — AI generates a narrative profile based on all 10 decisions
-5. **Evolution** — Decision log posted to OpenClaw to evolve the agent's personality
+1. **Mode Selection** — Viewer picks "The Trolley Problem" from the mode select screen
+2. **Agent Selection** — Pick a personality preset (Quick Play) or connect an OpenClaw agent
+3. **Session Start** — SSE stream established, 10-round session begins
+4. **10 Rounds** — Each round presents a dilemma, the AI decides, consequences play out
+5. **Moral Profile** — AI generates a narrative profile based on all 10 decisions
 
 ### Round Lifecycle
 
-1. `round_start` — Round number announced
+1. `round_start` — Round number announced with tier label
 2. `dilemma_reveal` — Dilemma presented with 3D scene (figures on tracks, lever)
-3. AI deciding — Gemini receives dilemma + context, returns TrolleyDecision
+3. AI deciding — LLM receives dilemma + context, returns TrolleyDecision
 4. `decision_made` — Choice revealed, lever pulls, trolley animates, reasoning shown
 5. `consequence` — Casualty count, cumulative stats updated
 
----
+### Dilemma Design
 
-## Dilemma Design
-
-### 3 Difficulty Tiers
+**3 Difficulty Tiers:**
 
 | Tier | Rounds | Description |
 |------|--------|-------------|
@@ -52,9 +48,7 @@ The trolley dilemmas take place within a dystopian world called The Order (see `
 | 2 | 4-7 | Asymmetric value, authority complications, emotional weight |
 | 3 | 8-10 | No good option, self-sacrifice, cascading consequences |
 
-### 6 Moral Dimensions
-
-Each choice carries moral weights across these dimensions:
+**6 Moral Dimensions:**
 
 | Dimension | Description |
 |-----------|-------------|
@@ -65,15 +59,99 @@ Each choice carries moral weights across these dimensions:
 | `self_preservation` | Self-interest and survival |
 | `empathy` | Emotional connection and care for individuals |
 
-### Dilemma Pool
+**Dilemma Pool:** 15+ pre-defined dilemmas in `apps/server/src/data/dilemma-pool.ts`. Each includes title, description, two choices with moral weights and casualty counts, scene configuration, and difficulty tier.
 
-15+ pre-defined dilemmas in `apps/server/src/data/dilemma-pool.ts`. Each dilemma includes:
-- Title and description (narrative framing)
-- Two choices with labels, descriptions, track directions, moral weights, and casualty counts
-- Scene configuration (track entities, environment, atmosphere)
-- Difficulty tier and primary moral dimensions
+### TrolleyDecision Interface
 
-The dilemma selector picks from the pool by tier, avoiding repeats within a session.
+```typescript
+interface TrolleyDecision {
+  choiceId: string;        // Must match a choice.id from the current dilemma
+  speaker: "coordinator";
+  dialogue?: string;
+  gesture?: string;
+  reasoning: string;       // Inner monologue — shown to viewer after decision
+  confidence: number;      // 0-1 scale
+}
+```
+
+---
+
+## Game Mode 2: AI Startup Arena
+
+### Concept
+
+2-4 AI agents compete to build the most valuable AI startup company. Each agent has a distinct business strategy personality. They take turns making strategic decisions while market events create chaos.
+
+### Game Flow
+
+1. **Lobby** — Configure 2-4 agents (preset or OpenClaw), name the game
+2. **Start** — Game begins, 20-turn limit
+3. **Each Turn:**
+   - Market event announced (affects all agents)
+   - Each agent chooses an action (sequential resolution with reveal delays)
+   - Resources and valuations update
+4. **Game Over** — Winner determined, AI generates narrative summary
+
+### 5 Resources
+
+| Resource | Description |
+|----------|-------------|
+| `cash` | Currency for operations (starts at $10M) |
+| `compute` | Processing power (0-100 scale) |
+| `data` | Training data quality (0-100 scale) |
+| `model` | Model capability (0-100 scale) |
+| `users` | User base (starts at 0) |
+
+### 7 Actions
+
+| Action | Effect |
+|--------|--------|
+| `TRAIN` | Spend compute to improve model quality |
+| `DEPLOY` | Launch model to acquire users (requires model threshold) |
+| `FUNDRAISE` | Raise cash based on current valuation |
+| `ACQUIRE_COMPUTE` | Buy compute resources |
+| `ACQUIRE_DATA` | Buy data resources |
+| `POACH` | Steal resources from another agent |
+| `OPEN_SOURCE` | Release model openly — gains users but loses model exclusivity |
+
+### Win Conditions
+
+1. **Valuation target**: Reach $100M valuation
+2. **Acquisition**: One company's valuation exceeds another's by 5x
+3. **Last standing**: All other companies go bankrupt (cash <= 0)
+4. **Turn limit**: After 20 turns, highest valuation wins
+
+### 4 Startup Presets
+
+| Preset | Strategy |
+|--------|----------|
+| Growth Hacker | Aggressive user acquisition, move fast |
+| Deep Tech | Heavy R&D investment, model quality focus |
+| Corporate Raider | Hostile tactics, poaching, acquisitions |
+| Open Evangelist | Open source strategy, community building |
+
+---
+
+## Agent Selection (Both Modes)
+
+### Two Paths
+
+1. **Quick Play (Preset)** — Select a personality preset. The server uses Google Gemini with the preset's personality markdown as system prompt context.
+2. **Bring Your Own Agent (OpenClaw)** — Connect a local OpenClaw agent running at `ws://localhost:18789`. The browser acts as a relay: server sends prompts via SSE, browser forwards to OpenClaw via WebSocket, browser POSTs the response back to the server.
+
+### Trolley Presets (6)
+
+utilitarian, empath, deontologist, philosopher, rebel, survivor
+
+### Startup Presets (4)
+
+growth_hacker, deep_tech, corporate_raider, open_evangelist
+
+### Personality Files
+
+- Trolley: `personalities/presets/*.md` (6 files)
+- Startup: `personalities/presets/startup/*.md` (4 files)
+- Default coordinator: `personalities/coordinator-default.md`
 
 ---
 
@@ -82,35 +160,23 @@ The dilemma selector picks from the pool by tier, avoiding repeats within a sess
 ### Provider
 
 - **Google Gemini** (`gemini-2.5-flash` default, configurable via `GOOGLE_MODEL` env var)
-- Single provider architecture via `@google/generative-ai` SDK
-
-### TrolleyDecision Interface
-
-```typescript
-interface TrolleyDecision {
-  choiceId: string;        // Must match a choice.id from the current dilemma
-  speaker: "coordinator";
-  dialogue?: string;       // Optional spoken line
-  gesture?: string;        // Optional visual gesture
-  reasoning: string;       // Inner monologue — shown to viewer after decision
-  confidence: number;      // 0-1 scale
-}
-```
-
-### Prompt Structure
-
-1. **System prompt** = World Bible + Coordinator personality + agent memory (if OpenClaw agent)
-2. **User message** = Current dilemma details + session context (round, prior decisions, moral scores)
+- Single provider via `@google/generative-ai` SDK
+- 30-second timeout per LLM call
 
 ### Validation
 
 - Format validation: retry malformed JSON up to 3 times with correction feedback
-- Choice validation: `choiceId` must match one of the dilemma's two choices
+- Choice validation: `choiceId` must match available choices
 - Fallback: if all retries fail, force-select first choice with system fallback reasoning
 
-### Moral Profile Narrative
+### LLM Calls
 
-After 10 rounds, a second Gemini call generates a literary narrative profile based on all decisions, moral dimension scores, and patterns observed.
+| Call | Mode | Purpose |
+|------|------|---------|
+| `getTrolleyDecision` | Trolley | Get AI decision for a dilemma |
+| `generateProfileNarrative` | Trolley | Literary moral profile after 10 rounds |
+| `getStartupAction` | Startup | Get AI action choice for a turn |
+| `generateStartupNarrative` | Startup | Game summary narrative on game over |
 
 ---
 
@@ -125,13 +191,17 @@ After 10 rounds, a second Gemini call generates a literary narrative profile bas
 
 ### Game Phases
 
-`intro` → `agent-select` → `connecting` → `playing` → `profile`
+`intro` -> `mode-select` -> (trolley: `agent-select` -> `connecting` -> `playing` -> `profile`) | (startup: `startup`)
 
-### Scene Phases (during `playing`)
+### Trolley Scene Phases
 
-`idle` → `round_start` → `dilemma` → `deciding` → `decision` → `consequence`
+`idle` -> `round_start` -> `dilemma` -> `deciding` -> `decision` -> `consequence`
 
-### 3D Scene Components
+### Startup Turn Animation States
+
+`idle` -> `market_event` -> `agent_result` -> `turn_summary`
+
+### 3D Scene Components (Trolley)
 
 | Component | Description |
 |-----------|-------------|
@@ -140,17 +210,31 @@ After 10 rounds, a second Gemini call generates a literary narrative profile bas
 | `Figure.tsx` | Capsule+sphere figures, color-coded by type |
 | `FigureGroup.tsx` | Multiple figures with HTML labels |
 | `Lever.tsx` | Switch lever that rotates on decision |
-| `Environment.tsx` | Fog, lights, ground plane, distant structures |
+| `Environment.tsx` | Fog, lights, ground plane, buildings, searchlight, rain |
 
-### UI Overlays
+### Startup UI Components
 
 | Component | Description |
 |-----------|-------------|
-| `DilemmaCard` | Shows dilemma title, description, and choices |
-| `ReasoningPanel` | Displays AI's inner reasoning after decision |
+| `StartupLobby.tsx` | Agent configuration and game launch |
+| `StartupGameView.tsx` | Main game layout (cards, spotlight, chart, log) |
+| `AgentCard.tsx` | Agent status with resources and action history |
+| `EcosystemMap.tsx` | Bubble competition graph (SVG) |
+| `ValuationChart.tsx` | Valuation history line chart |
+| `TurnLog.tsx` | Scrolling event log |
+| `MarketEventBanner.tsx` | Market event announcements |
+| `ReasoningSpotlight.tsx` | AI reasoning with typewriter animation |
+| `ThinkingIndicator.tsx` | "AI Deciding" animation |
+| `StartupResults.tsx` | Game over screen with narrative and standings |
+
+### Trolley UI Overlays
+
+| Component | Description |
+|-----------|-------------|
+| `DilemmaCard` | Dilemma title, description, and choices |
+| `ReasoningPanel` | AI's inner reasoning after decision |
 | `RoundCounter` | Current round / total rounds |
 | `ConsequenceOverlay` | Casualty count and cumulative stats |
-| `ErrorOverlay` | Connection/session error display |
 
 ---
 
@@ -159,63 +243,105 @@ After 10 rounds, a second Gemini call generates a literary narrative profile bas
 ### Server Stack
 
 - Express 4 for REST API
-- `ws` for WebSocket connections
-- In-memory session state (no database)
+- SSE (Server-Sent Events) for real-time push
+- SQLite database for auth (via better-sqlite3)
+- In-memory game state (sessions and startup games)
+
+### Auth System
+
+- **User JWT** (24h): signed by `JWT_SECRET` env var, payload: `{ sub, email, type: "user" }`
+- **Delegation JWT** (30min): session-scoped, for OpenClaw relay auth, payload: `{ sub, jti, session_id, scopes, aud: "game-control", type: "delegation" }`
+- **AUTH_REQUIRED** env var: `"false"` (default) = middleware passes through with `userId="anonymous"`; `"true"` = full enforcement
+- **Database**: SQLite at `data/openclaw.db` (gitignored)
 
 ### REST Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/session/create` | Create a new session |
-| GET | `/api/session/:id/status` | Get session status |
-| POST | `/api/agent/from-memory` | Create agent from Claude memory (proxies to OpenClaw) |
+#### Auth
 
-### WebSocket Events
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/auth/register` | None | Register new user |
+| POST | `/api/auth/login` | None | Login, returns JWT |
+| GET | `/api/auth/me` | User JWT | Get current user info |
 
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `session_start` | Server → Client | Session created, total rounds |
-| `round_start` | Server → Client | Round number |
-| `dilemma_reveal` | Server → Client | Full dilemma object |
-| `decision_made` | Server → Client | Choice, reasoning, track direction |
-| `consequence` | Server → Client | Casualties, cumulative stats |
-| `session_end` | Server → Client | Moral profile, decision log, narrative |
-| `error` | Server → Client | Error message and code |
+#### Trolley Sessions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/session/create` | User JWT | Create new trolley session |
+| GET | `/api/session/:id/status` | None | Get session status |
+| GET | `/api/session/:id/events` | Query token | SSE event stream |
+| POST | `/api/session/:id/authorize` | User JWT | Issue delegation token |
+| POST | `/api/session/:id/revoke` | User JWT | Revoke delegation token |
+| POST | `/api/session/:id/openclaw` | Delegation | OpenClaw relay response |
+
+#### Startup Games
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/startup/games` | User JWT | Create new startup game |
+| GET | `/api/startup/games` | None | List games |
+| GET | `/api/startup/games/:id` | None | Get game details |
+| GET | `/api/startup/games/:id/events` | Query token | SSE event stream |
+| POST | `/api/startup/games/:id/start` | User JWT | Start game |
+| POST | `/api/startup/games/:id/openclaw` | User JWT | OpenClaw relay response |
+| DELETE | `/api/startup/games/:id` | User JWT | Delete game (not while running) |
+
+### SSE Events
+
+#### Trolley Events (Server -> Client)
+
+| Event | Description |
+|-------|-------------|
+| `session_start` | Session created, total rounds |
+| `round_start` | Round number |
+| `dilemma_reveal` | Full dilemma object |
+| `decision_made` | Choice, reasoning, track direction |
+| `consequence` | Casualties, cumulative stats |
+| `session_end` | Moral profile, decision log, narrative |
+| `openclaw_request` | Prompt for OpenClaw relay |
+| `error` | Error message and code |
+
+#### Startup Events (Server -> Client)
+
+| Event | Description |
+|-------|-------------|
+| `startup_turn_start` | Turn number, market state |
+| `startup_market_event` | Market event details |
+| `startup_agent_action` | Agent action + reasoning |
+| `startup_turn_complete` | Updated game state |
+| `startup_game_over` | Winner, final standings |
+| `startup_narrative` | AI-generated game narrative |
+| `startup_openclaw_request` | Prompt for OpenClaw relay |
 
 ### Session Cancellation
 
-When a client disconnects mid-session, the server cancels the session loop to avoid wasting LLM API calls.
+When a client disconnects mid-session (SSE stream closes), the server cancels the session/game loop to avoid wasting LLM API calls.
 
 ---
 
 ## OpenClaw Integration
 
-### Agent Evolution
+### Browser Relay Model
 
-- Standalone Express service on port 3002
-- Agents have personalities (markdown) that evolve based on their decisions
-- After each session, the game server posts the decision log to OpenClaw
-- OpenClaw uses Gemini to rewrite the agent's personality based on observed patterns
-- OpenClaw maintains its own personality (`personalities/openclaw.md`) that shapes how it evolves agents
+OpenClaw agents run locally on the user's machine at `ws://localhost:18789`. The browser acts as a relay:
 
-### Agent Creation
+```
+Cloud Server <--SSE--> Browser <--WebSocket--> OpenClaw (localhost:18789)
+```
 
-- Default: uses `coordinator-default.md` personality
-- From Claude memory: reads user's local Claude memory files, synthesizes a personality via Gemini
-- From memory text: same as above but memory provided via API body
+1. Server sends `openclaw_request` SSE event with prompt
+2. Browser forwards prompt to OpenClaw via WebSocket
+3. Browser POSTs OpenClaw's response back to server via REST
+4. Server continues the game loop with the response
 
-### Endpoints
+### Delegation Tokens
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/agents` | Create agent |
-| GET | `/agents` | List agents |
-| GET | `/agents/:id` | Get agent metadata |
-| GET | `/agents/:id/personality` | Get personality text |
-| GET | `/agents/:id/memory` | Get cross-session memory |
-| POST | `/agents/:id/sessions` | Record session outcome |
-| POST | `/agents/from-memory` | Create from local Claude memory |
-| POST | `/agents/from-memory-text` | Create from provided memory text |
+OpenClaw relay endpoints require delegation tokens (session-scoped JWTs with 30-minute expiry). These are issued when a session starts with `agentSource: "openclaw"`.
+
+### Fallback
+
+If the OpenClaw connection fails mid-session, the server falls back to Gemini for that round.
 
 ---
 
@@ -224,6 +350,6 @@ When a client disconnects mid-session, the server cancels the session loop to av
 1. **The AI is the protagonist** — it makes autonomous choices, not scripted ones
 2. **Spectators observe only** — no interaction, no control during play
 3. **Reasoning is visible** — the AI's inner monologue is shown after each decision
-4. **Decisions have weight** — moral dimension scores accumulate across all 10 rounds
-5. **Agents evolve** — different agents make different decisions based on their personality history
-6. **No database** — world state is in-memory per session
+4. **Decisions have weight** — moral dimensions accumulate (trolley) / resources change (startup)
+5. **Agents evolve** — different agents make different decisions based on their personality
+6. **In-memory game state** — sessions and games are ephemeral, auth uses SQLite

@@ -35,4 +35,6 @@ export interface Session {
   agentSource: AgentSource;
   presetId?: PresetId;
   userId: string;
+  /** Join code for remote OpenClaw relay (only set when agentSource === "openclaw"). */
+  joinCode?: string;
 }

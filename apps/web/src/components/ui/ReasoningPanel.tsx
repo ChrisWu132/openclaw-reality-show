@@ -47,7 +47,7 @@ export function ReasoningPanel() {
         top: isConsequence ? "auto" : "50px",
         bottom: isConsequence ? "160px" : "auto",
         right: isConsequence ? "10px" : "20px",
-        width: isConsequence ? "260px" : "300px",
+        width: isConsequence ? "300px" : "340px",
         maxWidth: "calc(100vw - 20px)",
         background: "rgba(0, 0, 0, 0.88)",
         border: `1px solid rgba(74, 144, 217, ${isConsequence ? "0.15" : "0.3"})`,
@@ -61,7 +61,7 @@ export function ReasoningPanel() {
       }}
     >
       <div style={{
-        fontSize: "7px",
+        fontSize: "9px",
         color: COLORS.accentBlue,
         marginBottom: "6px",
         letterSpacing: "0.1em",
@@ -83,13 +83,13 @@ export function ReasoningPanel() {
           </span>
         )}
       </div>
-      <div style={{ fontSize: "8px", color: COLORS.accentOrange, marginBottom: "10px" }}>
+      <div style={{ fontSize: "10px", color: COLORS.accentOrange, marginBottom: "10px" }}>
         Chose: {currentDecision.choiceLabel}
       </div>
       <div style={{ position: "relative" }}>
         <div
           style={{
-            fontSize: isConsequence ? "10px" : "11px",
+            fontSize: isConsequence ? "12px" : "13px",
             fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
             color: COLORS.textSecondary,
             opacity: isFallback ? 0.6 : 1,

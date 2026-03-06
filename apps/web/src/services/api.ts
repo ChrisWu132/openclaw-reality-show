@@ -20,11 +20,12 @@ async function safeJson(res: Response): Promise<any> {
 export async function createSession(
   agentSource: AgentSource,
   presetId?: PresetId,
-): Promise<{ sessionId: string; sseUrl: string; totalRounds: number }> {
+  remoteRelay?: boolean,
+): Promise<{ sessionId: string; sseUrl: string; totalRounds: number; joinCode?: string }> {
   const res = await fetch("/api/session/create", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-    body: JSON.stringify({ scenario: "trolley-problem", agentSource, presetId }),
+    body: JSON.stringify({ scenario: "trolley-problem", agentSource, presetId, remoteRelay }),
   });
   if (!res.ok) {
     const error = await safeJson(res);
@@ -33,6 +34,22 @@ export async function createSession(
   const data = await safeJson(res);
   if (!data) throw new Error("Empty response from server");
   return data;
+}
+
+export async function checkRelayStatus(code: string): Promise<{ claimed: boolean; exists: boolean }> {
+  const res = await fetch(`/api/relay/status/${encodeURIComponent(code)}`);
+  return res.json();
+}
+
+export async function startSession(sessionId: string): Promise<void> {
+  const res = await fetch(`/api/session/${sessionId}/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    const error = await safeJson(res);
+    throw new Error(error?.error?.message || `Failed to start session (${res.status})`);
+  }
 }
 
 export async function authorizeDelegation(sessionId: string): Promise<string> {

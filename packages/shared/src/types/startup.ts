@@ -51,9 +51,9 @@ export interface StartupAgent {
   status: StartupAgentStatus;
   resources: StartupResources;
   /** Zone the agent is currently in (moves based on action). */
-  zone: ZoneId;
+  zone?: ZoneId;
   /** History of zones visited (last N for trail rendering). */
-  zoneHistory: ZoneId[];
+  zoneHistory?: ZoneId[];
   /** Reputation/hype from open-sourcing. */
   reputation: number;
   eliminatedOnTurn?: number;
@@ -102,6 +102,19 @@ export type StartupWinCondition =
   | "last_standing"
   | "turn_limit";
 
+// ── Agent Config (lobby setup) ────────────────────────────────
+
+export type StartupAgentSource = "preset" | "openclaw";
+
+export interface StartupAgentConfig {
+  agentId: string;
+  agentName: string;
+  agentSource: StartupAgentSource;
+  presetId?: string;
+  /** Join code for remote OpenClaw relay (only set when agentSource === "openclaw"). */
+  joinCode?: string;
+}
+
 // ── Game State ─────────────────────────────────────────────────
 
 export type StartupGameStatus = "lobby" | "running" | "finished";
@@ -109,12 +122,15 @@ export type StartupGameStatus = "lobby" | "running" | "finished";
 export interface StartupGame {
   id: string;
   status: StartupGameStatus;
+  creatorId?: string;
   agents: StartupAgent[];
+  agentConfigs?: StartupAgentConfig[];
   currentTurn: number;
   maxTurns: number;
   turnLog: StartupTurnLogEntry[];
   winner?: string; // agentId
   winCondition?: StartupWinCondition;
+  narrative?: string;
   createdAt: number;
   updatedAt: number;
 }

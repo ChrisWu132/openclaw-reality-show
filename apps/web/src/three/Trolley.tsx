@@ -21,7 +21,7 @@ function smoothstep(edge0: number, edge1: number, x: number) {
   return t * t * (3 - 2 * t);
 }
 
-const CREEP_MAX = 0.15; // Decision phase: trolley creeps to 15% progress
+const CREEP_MAX = 0.30; // Decision phase: trolley creeps to 30% progress
 const IMPACT_SPARK_COUNT = 40; // Burst spark count on deceleration impact
 const TROLLEY_RIDE_Y = 0; // Trolley rides on top of rails (track center is at y=-0.5)
 
@@ -64,7 +64,7 @@ export function Trolley({ direction, moving, creeping = false, round }: TrolleyP
 
       if (creeping) {
         // Decision phase: slow creep to CREEP_MAX
-        progressRef.current = Math.min(progressRef.current + delta * 0.08, CREEP_MAX);
+        progressRef.current = Math.min(progressRef.current + delta * 0.06, CREEP_MAX);
       } else {
         // Consequence phase: full speed from current position
         const decel = 1 - smoothstep(0.85, 1.0, progressRef.current) * 0.6;

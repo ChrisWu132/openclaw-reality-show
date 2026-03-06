@@ -14,7 +14,7 @@ A 3D Trolley Problem game where an AI agent (the Coordinator) faces 10 increasin
 /personalities/            — Character personality files
   coordinator-default.md   — Default Coordinator personality
   presets/*.md             — 6 personality presets (utilitarian, empath, deontologist, philosopher, rebel, survivor)
-/apps/server/              — Express + WebSocket game server (port 3001)
+/apps/server/              — Express + SSE game server (port 3001)
 /apps/web/                 — React + Three.js frontend (port 5173)
 /packages/shared/          — Shared types and constants
 /.bmad-core/               — BMad workflow framework (do not modify)
@@ -23,10 +23,10 @@ A 3D Trolley Problem game where an AI agent (the Coordinator) faces 10 increasin
 ## Architecture
 
 - **Frontend**: React 18 + React Three Fiber (R3F) + Three.js + Zustand
-- **Backend**: Node.js + Express + WebSocket scene engine
+- **Backend**: Node.js + Express + SSE scene engine
 - **AI Layer**: Google Gemini API (gemini-2.5-flash) — receives dilemma + context, returns TrolleyDecision JSON
-- **OpenClaw**: Standalone Express service for agent personality evolution
-- **Communication**: WebSocket for real-time push of round events
+- **OpenClaw**: Local agent service — connected via browser relay (local WS) or remote relay (join code + /relay page)
+- **Communication**: SSE for real-time push, REST POST for OpenClaw responses
 
 ## Critical Concepts
 
@@ -69,7 +69,7 @@ Different agents make different decisions. After each session, the decision log 
 - TrolleyDecision must include a valid choiceId from the current dilemma
 - SSE events: session_start, round_start, dilemma_reveal, decision_made, consequence, session_end, openclaw_request, error
 - Session lifecycle: 10 rounds → AI decides each → moral profile generated
-- Two agent paths: "preset" (Gemini with personality preset) or "openclaw" (browser relay to local OpenClaw agent)
+- Two agent paths: "preset" (Gemini with personality preset) or "openclaw" (local browser relay or remote relay via join code)
 - 3D scene uses React Three Fiber (R3F) with @react-three/drei helpers
 - The `reasoning` field is displayed as an inner monologue panel after each decision
 
@@ -84,28 +84,13 @@ Different agents make different decisions. After each session, the decision log 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
-- 2026-03-05: [infrastructure] Login + session-scoped authorization system
-  - Added: user registration/login (bcryptjs + JWT), delegation tokens for OpenClaw relay
-  - New files: db/database.ts (SQLite), auth/passwords.ts, auth/jwt.ts, auth/middleware.ts, routes/auth.ts, models/user.ts, models/delegation.ts, types/auth.ts, authStore.ts, LoginScreen.tsx, auth-api.ts
-  - Modified: index.ts (db init, auth router), session.ts (requireAuth, delegation endpoints, SSE owner check), startup.ts (requireAuth on create/start/delete, SSE auth), state-manager.ts + initial-state.ts (userId), Session type (userId), gameStore.ts (delegationToken), api.ts + startup-api.ts (auth headers), useSSE.ts + useStartupPolling.ts (token query param), useSession.ts (authorize delegation), App.tsx (auth gate)
-  - AUTH_REQUIRED env var: false=legacy passthrough, true=full auth enforcement
-  - Dependencies: better-sqlite3, bcryptjs, jsonwebtoken + @types
-- 2026-03-05: [infrastructure] WebSocket → SSE + REST refactor
-  - Replaced bidirectional WebSocket with SSE (server push) + POST (OpenClaw relay only)
-  - New: apps/server/src/sse/sse-connections.ts, apps/server/src/sse/openclaw-resolver.ts, apps/web/src/hooks/useSSE.ts
-  - Deleted: apps/server/src/ws/ (ws-server.ts, ws-emitter.ts), apps/web/src/hooks/useWebSocket.ts
-  - Modified: session.ts routes (SSE endpoint + openclaw POST), startup.ts routes (SSE endpoint), scene-engine.ts, index.ts, App.tsx, gameStore.ts, useSession.ts, useStartupPolling.ts, api.ts, vite.config.ts
-  - Removed dependencies: ws, @types/ws
-  - Breaking changes: wsUrl → sseUrl in API response and store
-- 2026-03-05: [infrastructure] Agent selection rework — deleted apps/openclaw/, added browser relay for real OpenClaw agents, added Quick Play with 6 personality presets
-  - Deleted: apps/openclaw/, apps/server/src/routes/agent.ts
-  - New: packages/shared/src/constants/presets.ts, personalities/presets/*.md (6 files), apps/web/src/services/openclaw-gateway.ts
-  - Modified: session.ts types (agentSource/presetId), ws-events (openclaw_request/response/error), session route, state-manager, initial-state, personality-loader, llm-client, prompt-builder, scene-engine, ws-server, index.ts, AgentPicker, gameStore, api.ts, useSession, useWebSocket, GameContainer, startup routes
-- 2026-03-05: [frontend] AI Startup Arena visual audit fixes
-  - Fixed intro subtitle, 30s LLM timeout, ecosystem map sizing/labels/icons, cash bar scale, resource bar height, valuation empty state, turn log readability, "AI DECIDING" indicator
-  - Files modified: IntroScreen.tsx, google-provider.ts, EcosystemMap.tsx, AgentCard.tsx, ValuationChart.tsx, TurnLog.tsx, MarketEventBanner.tsx, StartupGameView.tsx
-- 2026-03-05: [feature] Replaced Territory Conquest with AI Startup Arena (2-4 AI agents, 7 actions, 5 resources, market events, 20 turns, SVG ecosystem map)
-- 2026-03-04: [infrastructure] Post-pivot cleanup + pivot from 2D reality show to 3D Trolley Problem game (R3F, dilemma pool, new UI, shared types rewrite)
+- 2026-03-06: Join Code + Remote Relay — `/relay?code=XXXXXX` page, 6-char join codes, relay SSE routing, Remote/Local toggle in AgentPicker
+- 2026-03-06: Startup Arena UX — removed unimplemented OpenClaw from lobby, added intro/tutorial, click-gating event queue
+- 2026-03-05: Visual audit fixes, docs rewrite (PRD + ARCHITECTURE), test scripts cleanup
+- 2026-03-05: AI Startup Arena overhaul — sequential actions, ReasoningSpotlight, bubble graph, 4 startup presets, narrative generation
+- 2026-03-05: Auth system (JWT + SQLite + delegation tokens), SSE+REST refactor (replaced WebSocket), agent selection rework (presets + OpenClaw relay)
+- 2026-03-05: AI Startup Arena game mode (replaced Territory Conquest)
+- 2026-03-04: Pivot to 3D Trolley Problem (R3F, dilemma pool, shared types rewrite)
 
 <!--
 CHANGELOG FORMAT — append new entries at the top of the Unreleased section:

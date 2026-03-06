@@ -15,6 +15,9 @@ interface GameState {
   agentSource: AgentSource | null;
   presetId: PresetId | null;
   presetName: string | null;
+  openclawUrl: string;
+  joinCode: string | null;
+  relayConnected: boolean;
 
   currentRound: number;
   totalRounds: number;
@@ -54,6 +57,9 @@ interface GameState {
   setPhase: (phase: GamePhase) => void;
   setSseUrl: (url: string) => void;
   setDelegationToken: (token: string) => void;
+  setOpenclawUrl: (url: string) => void;
+  setJoinCode: (code: string | null) => void;
+  setRelayConnected: (connected: boolean) => void;
   setAgentSource: (source: AgentSource, presetId?: PresetId) => void;
   setScenePhase: (phase: ScenePhase) => void;
   setConsequenceSubPhase: (subPhase: ConsequenceSubPhase) => void;
@@ -151,6 +157,9 @@ const initialState = {
   agentSource: null as AgentSource | null,
   presetId: null as PresetId | null,
   presetName: null as string | null,
+  openclawUrl: "ws://localhost:18789",
+  joinCode: null as string | null,
+  relayConnected: false,
   currentRound: 0,
   totalRounds: 10,
   scenePhase: "idle" as ScenePhase,
@@ -174,6 +183,9 @@ export const useGameStore = create<GameState>((set) => ({
   setPhase: (phase) => set({ phase }),
   setSseUrl: (url) => set({ sseUrl: url }),
   setDelegationToken: (token) => set({ delegationToken: token }),
+  setOpenclawUrl: (openclawUrl) => set({ openclawUrl }),
+  setJoinCode: (joinCode) => set({ joinCode }),
+  setRelayConnected: (relayConnected) => set({ relayConnected }),
   setAgentSource: (agentSource, presetId) => set({ agentSource, presetId: presetId ?? null }),
   setScenePhase: (scenePhase) => set({ scenePhase, consequenceSubPhase: scenePhase === "consequence" ? "traveling" : null }),
   setConsequenceSubPhase: (consequenceSubPhase) => set({ consequenceSubPhase }),

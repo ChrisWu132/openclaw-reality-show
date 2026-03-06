@@ -13,3 +13,16 @@ export const FONTS = {
   pixel: "'Press Start 2P', monospace",
   body: "'IBM Plex Mono', 'Courier New', monospace",
 } as const;
+
+export const STARTUP_SIZES = {
+  headerLg: "14px",
+  headerMd: "11px",
+  headerSm: "9px",
+  body: "9px",
+  bodySm: "8px",
+  label: "8px",
+  valuationLg: "14px",
+  legendText: "8px",
+  chartHeight: 150,
+  cardWidth: 300,
+} as const;

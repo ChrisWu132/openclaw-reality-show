@@ -1,19 +1,21 @@
 import type { StartupGame } from "@openclaw/shared";
+import { COLORS, FONTS, STARTUP_SIZES } from "../../styles/theme";
 
 interface ValuationChartProps {
   game: StartupGame;
+  height?: number;
 }
 
-export function ValuationChart({ game }: ValuationChartProps) {
-  const font = "'Press Start 2P', monospace";
+export function ValuationChart({ game, height }: ValuationChartProps) {
+  const H = height || STARTUP_SIZES.chartHeight;
 
   if (game.turnLog.length === 0) {
     return (
       <div>
-        <div style={{ fontSize: "7px", color: "#a0a0a0", fontFamily: font, marginBottom: "8px" }}>
+        <div style={{ fontSize: STARTUP_SIZES.headerSm, color: COLORS.textSecondary, fontFamily: FONTS.pixel, marginBottom: "8px" }}>
           VALUATION
         </div>
-        <div style={{ fontSize: "6px", color: "#606060", fontFamily: font, padding: "16px 0", textAlign: "center" }}>
+        <div style={{ fontSize: STARTUP_SIZES.body, color: "#606060", fontFamily: FONTS.body, padding: "16px 0", textAlign: "center" }}>
           No valuation yet — deploy to get users
         </div>
       </div>
@@ -32,53 +34,111 @@ export function ValuationChart({ game }: ValuationChartProps) {
   const allValues = series.flatMap((s) => s.values);
   const maxVal = Math.max(...allValues, 1);
 
-  // If all valuations are zero, show message
   if (maxVal <= 1 && allValues.every((v) => v === 0)) {
     return (
       <div>
-        <div style={{ fontSize: "7px", color: "#a0a0a0", fontFamily: font, marginBottom: "8px" }}>
+        <div style={{ fontSize: STARTUP_SIZES.headerSm, color: COLORS.textSecondary, fontFamily: FONTS.pixel, marginBottom: "8px" }}>
           VALUATION
         </div>
-        <div style={{ fontSize: "6px", color: "#606060", fontFamily: font, padding: "16px 0", textAlign: "center" }}>
+        <div style={{ fontSize: STARTUP_SIZES.body, color: "#606060", fontFamily: FONTS.body, padding: "16px 0", textAlign: "center" }}>
           No valuation yet — deploy to get users
         </div>
       </div>
     );
   }
-  const turns = game.turnLog.length;
 
-  const W = 260;
-  const H = 100;
-  const PAD = 5;
-  const plotW = W - PAD * 2;
-  const plotH = H - PAD * 2;
+  const turns = game.turnLog.length;
+  const maxTurns = game.maxTurns;
+
+  const W = 600;
+  const YPAD = 20;
+  const XPAD_LEFT = 50;
+  const XPAD_RIGHT = 10;
+  const plotW = W - XPAD_LEFT - XPAD_RIGHT;
+  const plotH = H - YPAD * 2;
+
+  // Y-axis labels
+  const yLabels = [0, 25_000_000, 50_000_000, 75_000_000, 100_000_000].filter((v) => v <= Math.max(maxVal * 1.1, 100_000_000));
+  const yMax = Math.max(maxVal * 1.1, 100_000_000);
+
+  // X-axis labels
+  const xLabels = [1, 5, 10, 15, 20].filter((t) => t <= maxTurns);
+
+  // $100M threshold
+  const thresholdY = YPAD + plotH * (1 - 100_000_000 / yMax);
 
   return (
     <div>
-      <div style={{ fontSize: "7px", color: "#a0a0a0", fontFamily: font, marginBottom: "8px" }}>
+      <div style={{ fontSize: STARTUP_SIZES.headerSm, color: COLORS.textSecondary, fontFamily: FONTS.pixel, marginBottom: "8px" }}>
         VALUATION
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ background: "rgba(0,0,0,0.3)" }}>
         {/* Grid lines */}
-        {[0.25, 0.5, 0.75].map((frac) => (
+        {yLabels.map((val) => {
+          const y = YPAD + plotH * (1 - val / yMax);
+          return (
+            <g key={`y-${val}`}>
+              <line
+                x1={XPAD_LEFT}
+                y1={y}
+                x2={XPAD_LEFT + plotW}
+                y2={y}
+                stroke="#222"
+                strokeWidth="0.5"
+              />
+              <text
+                x={XPAD_LEFT - 4}
+                y={y + 3}
+                textAnchor="end"
+                fill="#555"
+                fontSize={STARTUP_SIZES.bodySm}
+                fontFamily={FONTS.body}
+              >
+                {val >= 1_000_000 ? `$${val / 1_000_000}M` : val === 0 ? "$0" : `$${val / 1_000}K`}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* X-axis labels */}
+        {xLabels.map((t) => {
+          const x = XPAD_LEFT + ((t - 1) / Math.max(maxTurns - 1, 1)) * plotW;
+          return (
+            <text
+              key={`x-${t}`}
+              x={x}
+              y={H - 4}
+              textAnchor="middle"
+              fill="#555"
+              fontSize={STARTUP_SIZES.bodySm}
+              fontFamily={FONTS.body}
+            >
+              Q{t}
+            </text>
+          );
+        })}
+
+        {/* $100M threshold dashed line */}
+        {100_000_000 <= yMax && (
           <line
-            key={frac}
-            x1={PAD}
-            y1={PAD + plotH * (1 - frac)}
-            x2={PAD + plotW}
-            y2={PAD + plotH * (1 - frac)}
-            stroke="#222"
-            strokeWidth="0.5"
+            x1={XPAD_LEFT}
+            y1={thresholdY}
+            x2={XPAD_LEFT + plotW}
+            y2={thresholdY}
+            stroke="#d9a64a"
+            strokeWidth="1"
+            strokeDasharray="6 4"
+            opacity="0.5"
           />
-        ))}
+        )}
 
         {/* Lines per agent */}
         {series.map((s) => {
           if (s.values.length === 0) return null;
           const points = s.values
             .map((v, i) => {
-              const x = PAD + (i / Math.max(turns - 1, 1)) * plotW;
-              const y = PAD + plotH * (1 - v / maxVal);
+              const x = XPAD_LEFT + (i / Math.max(turns - 1, 1)) * plotW;
+              const y = YPAD + plotH * (1 - v / yMax);
               return `${x},${y}`;
             })
             .join(" ");
@@ -88,7 +148,7 @@ export function ValuationChart({ game }: ValuationChartProps) {
               points={points}
               fill="none"
               stroke={s.color}
-              strokeWidth="1.5"
+              strokeWidth="2"
               strokeLinejoin="round"
             />
           );
@@ -96,12 +156,12 @@ export function ValuationChart({ game }: ValuationChartProps) {
       </svg>
 
       {/* Legend */}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "4px" }}>
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "6px" }}>
         {series.map((s) => (
           <div key={s.agentId} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <div style={{ width: "8px", height: "3px", background: s.color }} />
-            <span style={{ fontSize: "5px", color: "#888", fontFamily: font }}>
-              {s.name.slice(0, 10)}
+            <div style={{ width: "10px", height: "3px", background: s.color }} />
+            <span style={{ fontSize: STARTUP_SIZES.legendText, color: "#888", fontFamily: FONTS.body }}>
+              {s.name.slice(0, 14)}
             </span>
           </div>
         ))}

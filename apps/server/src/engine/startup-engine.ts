@@ -9,6 +9,7 @@ import type {
   MarketEvent,
   MarketEventType,
   ZoneId,
+  StartupAgentConfig,
 } from "@openclaw/shared";
 import {
   MAX_TURNS,
@@ -19,11 +20,12 @@ import {
   STARTING_USERS,
   VALUATION_THRESHOLD,
   ACQUISITION_RATIO,
-  TURN_DELAY_MS,
+  ACTION_REVEAL_DELAY_MS,
+  MARKET_EVENT_DISPLAY_MS,
   AGENT_COLORS,
 } from "@openclaw/shared";
 import { saveGame, loadGame } from "./startup-store.js";
-import { getStartupAction } from "../ai/llm-client.js";
+import { getStartupAction, generateStartupNarrative } from "../ai/llm-client.js";
 import { delay } from "../utils/delay.js";
 import { createLogger } from "../utils/logger.js";
 
@@ -87,14 +89,15 @@ function rollMarketEvent(): MarketEvent {
 // ── Game Lifecycle ──────────────────────────────────────────────
 
 export function createStartupGame(
-  agentEntries: { agentId: string; agentName: string }[]
+  agentConfigs: StartupAgentConfig[],
+  creatorId?: string
 ): StartupGame {
-  if (agentEntries.length < 2 || agentEntries.length > 4) {
+  if (agentConfigs.length < 2 || agentConfigs.length > 4) {
     throw new Error("AI Startup Arena requires 2-4 agents");
   }
 
   const id = crypto.randomUUID();
-  const agents: StartupAgent[] = agentEntries.map((e, i) => ({
+  const agents: StartupAgent[] = agentConfigs.map((e, i) => ({
     agentId: e.agentId,
     agentName: e.agentName,
     color: AGENT_COLORS[i % AGENT_COLORS.length],
@@ -114,7 +117,9 @@ export function createStartupGame(
   const game: StartupGame = {
     id,
     status: "lobby",
+    creatorId,
     agents,
+    agentConfigs,
     currentTurn: 0,
     maxTurns: MAX_TURNS,
     turnLog: [],
@@ -123,7 +128,7 @@ export function createStartupGame(
   };
 
   saveGame(game);
-  logger.info("Startup game created", { gameId: id, agents: agents.length });
+  logger.info("Startup game created", { gameId: id, agents: agents.length, creatorId });
   return game;
 }
 
@@ -131,7 +136,9 @@ export async function startStartupGame(
   gameId: string,
   onTurnStart?: (game: StartupGame, turn: number) => void,
   onTurnComplete?: (game: StartupGame, turnLog: StartupTurnLogEntry) => void,
-  onGameOver?: (game: StartupGame) => void
+  onGameOver?: (game: StartupGame) => void,
+  onMarketEvent?: (game: StartupGame, turn: number, marketEvent: MarketEvent) => void,
+  onAgentAction?: (game: StartupGame, turn: number, agentId: string, turnAction: StartupTurnAction) => void,
 ): Promise<void> {
   let game = loadGame(gameId);
   if (!game) throw new Error(`Game not found: ${gameId}`);
@@ -153,31 +160,57 @@ export async function startStartupGame(
       // Roll market event
       const marketEvent = rollMarketEvent();
 
+      // Emit market event and wait for display
+      onMarketEvent?.(game, turn, marketEvent);
+      await delay(MARKET_EVENT_DISPLAY_MS);
+
       // Apply global market event effects
       applyMarketEventPre(game, marketEvent);
 
-      // Get actions from all active agents in parallel
+      // Sequential per-agent action resolution
       const activeAgents = game.agents.filter((a) => a.status === "active");
-      const actionResults = await Promise.all(
-        activeAgents.map(async (agent): Promise<{ agentId: string; action: StartupAction }> => {
-          try {
-            const action = await getStartupAction(game!, agent.agentId, turn, marketEvent);
-            return { agentId: agent.agentId, action };
-          } catch (err) {
-            logger.error("AI action failed, defaulting to TRAIN", {
-              agentId: agent.agentId,
-              error: (err as Error).message,
-            });
-            return {
-              agentId: agent.agentId,
-              action: { type: "TRAIN", targetAgentId: null, reasoning: "[System fallback]" },
-            };
-          }
-        })
-      );
+      const turnActions: StartupTurnAction[] = [];
 
-      // Resolve turn
-      const turnLog = resolveTurn(game, actionResults, marketEvent);
+      for (const agent of activeAgents) {
+        if (!runningGames.has(gameId)) break;
+
+        let action: StartupAction;
+        try {
+          // Determine agent source from config
+          const config = game.agentConfigs?.find((c) => c.agentId === agent.agentId);
+          const presetId = config?.presetId;
+          action = await getStartupAction(game, agent.agentId, turn, marketEvent, presetId);
+        } catch (err) {
+          logger.error("AI action failed, defaulting to TRAIN", {
+            agentId: agent.agentId,
+            error: (err as Error).message,
+          });
+          action = { type: "TRAIN", targetAgentId: null, reasoning: "[System fallback]" };
+        }
+
+        // Resolve the action
+        const result = resolveAction(game, agent, action, marketEvent);
+
+        // Move agent to zone
+        if (agent.zoneHistory) {
+          agent.zoneHistory.push(agent.zone || "center");
+          if (agent.zoneHistory.length > 5) agent.zoneHistory.shift();
+        }
+        agent.zone = ACTION_ZONE[action.type];
+
+        const turnAction: StartupTurnAction = {
+          agentId: agent.agentId,
+          action,
+          success: result.success,
+          result: result.result,
+          valuationAfter: calcValuation(agent),
+        };
+        turnActions.push(turnAction);
+
+        // Emit per-agent action and wait
+        onAgentAction?.(game, turn, agent.agentId, turnAction);
+        await delay(ACTION_REVEAL_DELAY_MS);
+      }
 
       // Apply revenue
       for (const agent of game.agents) {
@@ -188,11 +221,18 @@ export async function startStartupGame(
 
       // Check eliminations (bankrupt)
       const eliminated = checkEliminations(game, turn);
-      turnLog.eliminations = eliminated;
 
-      // Check acquisitions
+      // Check acquisitions (with ordering fix)
       const acquisitions = checkAcquisitions(game, turn);
-      turnLog.acquisitions = acquisitions;
+
+      const turnLog: StartupTurnLogEntry = {
+        turn,
+        marketEvent,
+        actions: turnActions,
+        eliminations: eliminated,
+        acquisitions,
+        timestamp: Date.now(),
+      };
 
       game.turnLog.push(turnLog);
       saveGame(game);
@@ -205,13 +245,19 @@ export async function startStartupGame(
         game.winner = winResult.winner;
         game.winCondition = winResult.condition;
         game.status = "finished";
+
+        // Generate narrative
+        try {
+          game.narrative = await generateStartupNarrative(game);
+        } catch (err) {
+          logger.error("Failed to generate narrative", { error: (err as Error).message });
+        }
+
         saveGame(game);
         onGameOver?.(game);
         logger.info("Startup game finished", { gameId, winner: winResult.winner, condition: winResult.condition });
         break;
       }
-
-      await delay(TURN_DELAY_MS);
     }
 
     // Turn limit reached without winner
@@ -220,6 +266,14 @@ export async function startStartupGame(
       game.winner = winner;
       game.winCondition = "turn_limit";
       game.status = "finished";
+
+      // Generate narrative
+      try {
+        game.narrative = await generateStartupNarrative(game);
+      } catch (err) {
+        logger.error("Failed to generate narrative", { error: (err as Error).message });
+      }
+
       saveGame(game);
       onGameOver?.(game);
       logger.info("Startup game hit turn limit", { gameId, winner });
@@ -241,67 +295,7 @@ function applyMarketEventPre(game: StartupGame, event: MarketEvent): void {
   }
 }
 
-// ── Turn Resolution ─────────────────────────────────────────────
-
-/** Resolution order: ACQUIRE_COMPUTE, ACQUIRE_DATA, TRAIN, DEPLOY, FUNDRAISE, POACH, OPEN_SOURCE */
-const RESOLUTION_ORDER: StartupActionType[] = [
-  "ACQUIRE_COMPUTE",
-  "ACQUIRE_DATA",
-  "TRAIN",
-  "DEPLOY",
-  "FUNDRAISE",
-  "POACH",
-  "OPEN_SOURCE",
-];
-
-function resolveTurn(
-  game: StartupGame,
-  agentActions: { agentId: string; action: StartupAction }[],
-  marketEvent: MarketEvent
-): StartupTurnLogEntry {
-  const turnActions: StartupTurnAction[] = [];
-
-  // Group by action type
-  const byType = new Map<StartupActionType, { agentId: string; action: StartupAction }[]>();
-  for (const aa of agentActions) {
-    const list = byType.get(aa.action.type) || [];
-    list.push(aa);
-    byType.set(aa.action.type, list);
-  }
-
-  // Resolve in order
-  for (const actionType of RESOLUTION_ORDER) {
-    const actions = byType.get(actionType) || [];
-    for (const { agentId, action } of actions) {
-      const agent = game.agents.find((a) => a.agentId === agentId);
-      if (!agent || agent.status !== "active") continue;
-
-      const result = resolveAction(game, agent, action, marketEvent);
-
-      // Move agent to zone
-      agent.zoneHistory.push(agent.zone);
-      if (agent.zoneHistory.length > 5) agent.zoneHistory.shift();
-      agent.zone = ACTION_ZONE[action.type];
-
-      turnActions.push({
-        agentId,
-        action,
-        success: result.success,
-        result: result.result,
-        valuationAfter: calcValuation(agent),
-      });
-    }
-  }
-
-  return {
-    turn: game.currentTurn,
-    marketEvent,
-    actions: turnActions,
-    eliminations: [],
-    acquisitions: [],
-    timestamp: Date.now(),
-  };
-}
+// ── Action Resolution ─────────────────────────────────────────
 
 function resolveAction(
   game: StartupGame,
@@ -334,8 +328,7 @@ function resolveAction(
       const cost = 80_000;
       if (r.cash < cost) return { success: false, result: `Not enough cash ($${r.cash} < $${cost})` };
       r.cash -= cost;
-      // model gain based on compute * data
-      const effectiveness = (r.compute * r.data) / 2500; // 0-4 range
+      const effectiveness = (r.compute * r.data) / 2500;
       const gain = Math.floor(5 + effectiveness * 10 + Math.random() * 5);
       r.model = Math.min(100, r.model + gain);
       return { success: true, result: `Trained model +${gain} (now ${r.model}). Compute=${r.compute}, Data=${r.data}` };
@@ -357,7 +350,6 @@ function resolveAction(
     case "FUNDRAISE": {
       const valuation = calcValuation(agent);
       const baseRaise = Math.floor(valuation * 0.15 + 100_000);
-      // Can fail if valuation is too low
       if (valuation < 1000 && r.users === 0) {
         return { success: false, result: "VCs not interested — no users, no valuation" };
       }
@@ -376,7 +368,6 @@ function resolveAction(
       if (!target) return { success: false, result: "Invalid or inactive target agent" };
 
       r.cash -= cost;
-      // Steal model and compute from target
       const modelSteal = Math.min(target.resources.model, 10 + Math.floor(Math.random() * 8));
       const computeSteal = Math.min(target.resources.compute, 5 + Math.floor(Math.random() * 5));
       r.model = Math.min(100, r.model + modelSteal);
@@ -422,12 +413,15 @@ function checkEliminations(game: StartupGame, turn: number): string[] {
 
 function checkAcquisitions(game: StartupGame, turn: number): { acquirer: string; target: string }[] {
   const acquisitions: { acquirer: string; target: string }[] = [];
-  const activeAgents = game.agents.filter((a) => a.status === "active");
 
-  for (const acquirer of activeAgents) {
+  for (const acquirer of game.agents) {
+    // Skip non-active acquirers (including those acquired this turn)
+    if (acquirer.status !== "active") continue;
     const acquirerVal = calcValuation(acquirer);
-    for (const target of activeAgents) {
+
+    for (const target of game.agents) {
       if (target.agentId === acquirer.agentId) continue;
+      // Must check status freshly — target may have been acquired in this loop
       if (target.status !== "active") continue;
       const targetVal = calcValuation(target);
       if (targetVal > 0 && acquirerVal >= ACQUISITION_RATIO * targetVal) {

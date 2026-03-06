@@ -11,21 +11,28 @@ import { GameContainer } from "./GameContainer";
 import { MoralProfileCard } from "../ui/MoralProfileCard";
 import { StartupApp } from "../startup/StartupApp";
 import { ErrorOverlay } from "../ui/ErrorOverlay";
+import { RelayPage } from "../screens/RelayPage";
 
 export function App() {
+  // If URL path is /relay, show the relay page directly (no auth required)
+  const isRelayPage = window.location.pathname === "/relay";
+
   const phase = useGameStore((s) => s.phase);
   const sseUrl = useGameStore((s) => s.sseUrl);
+  const joinCode = useGameStore((s) => s.joinCode);
 
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.loading);
   const restoreSession = useAuthStore((s) => s.restoreSession);
 
-  useSSE(sseUrl);
+  useSSE(isRelayPage ? null : sseUrl);
 
   // Restore auth session on mount
   useEffect(() => {
     restoreSession();
   }, [restoreSession]);
+
+  if (isRelayPage) return <RelayPage />;
 
   // Show loading spinner during auth restore
   if (authLoading && !user) {
@@ -53,7 +60,8 @@ export function App() {
       content = <AgentPicker />;
       break;
     case "connecting":
-      content = <LoadingScreen />;
+      // If waiting for remote relay, show AgentPicker with join code display
+      content = joinCode ? <AgentPicker /> : <LoadingScreen />;
       break;
     case "playing":
       content = <GameContainer />;

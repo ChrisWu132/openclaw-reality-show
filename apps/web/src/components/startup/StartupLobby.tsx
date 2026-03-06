@@ -1,23 +1,30 @@
 import { useState, useEffect } from "react";
-import type { StartupGame } from "@openclaw/shared";
+import type { StartupGame, StartupAgentConfig } from "@openclaw/shared";
+import { STARTUP_PRESETS } from "@openclaw/shared";
 import { useStartupStore } from "../../stores/startupStore";
 import { useGameStore } from "../../stores/gameStore";
 import {
   createStartupGame,
   listStartupGames,
-  startStartupGame as apiStartGame,
 } from "../../services/startup-api";
-import { COLORS } from "../../styles/theme";
+import { COLORS, FONTS, STARTUP_SIZES } from "../../styles/theme";
 
 const ACCENT = "#4ad9b1";
+
+interface AgentInput {
+  agentName: string;
+  presetId: string;
+}
+
+const DEFAULT_NAMES = ["NeuralForge", "DeepScale AI", "SynthMind", "Cognito Labs"];
 
 export function StartupLobby() {
   const { setPhase, setActiveGame, setGames, games } = useStartupStore();
   const setMainPhase = useGameStore((s) => s.setPhase);
   const [loading, setLoading] = useState(false);
-  const [agentInputs, setAgentInputs] = useState([
-    { agentId: "", agentName: "NeuralForge" },
-    { agentId: "", agentName: "DeepScale AI" },
+  const [agentInputs, setAgentInputs] = useState<AgentInput[]>([
+    { agentName: DEFAULT_NAMES[0], presetId: "growth_hacker" },
+    { agentName: DEFAULT_NAMES[1], presetId: "deep_tech" },
   ]);
 
   useEffect(() => {
@@ -28,17 +35,18 @@ export function StartupLobby() {
     const validAgents = agentInputs.filter((a) => a.agentName.trim());
     if (validAgents.length < 2) return;
 
-    const agents = validAgents.map((a) => ({
-      agentId: a.agentId || crypto.randomUUID(),
+    const agentConfigs: StartupAgentConfig[] = validAgents.map((a) => ({
+      agentId: crypto.randomUUID(),
       agentName: a.agentName.trim(),
+      agentSource: "preset" as const,
+      presetId: a.presetId,
     }));
 
     setLoading(true);
     try {
-      const game = await createStartupGame(agents);
+      const game = await createStartupGame(agentConfigs);
       setActiveGame(game);
-      await apiStartGame(game.id);
-      setPhase("watching");
+      setPhase("intro");
     } catch (err) {
       alert((err as Error).message);
     } finally {
@@ -53,8 +61,13 @@ export function StartupLobby() {
 
   function addAgent() {
     if (agentInputs.length >= 4) return;
-    const names = ["NeuralForge", "DeepScale AI", "SynthMind", "Cognito Labs"];
-    setAgentInputs([...agentInputs, { agentId: "", agentName: names[agentInputs.length] || "Agent" }]);
+    const presets = STARTUP_PRESETS.map((p) => p.id);
+    const usedPresets = agentInputs.map((a) => a.presetId);
+    const nextPreset = presets.find((p) => !usedPresets.includes(p)) || presets[0];
+    setAgentInputs([
+      ...agentInputs,
+      { agentName: DEFAULT_NAMES[agentInputs.length] || "Agent", presetId: nextPreset },
+    ]);
   }
 
   function removeAgent(idx: number) {
@@ -62,13 +75,11 @@ export function StartupLobby() {
     setAgentInputs(agentInputs.filter((_, i) => i !== idx));
   }
 
-  function updateAgent(idx: number, field: "agentId" | "agentName", value: string) {
-    const updated = [...agentInputs];
-    updated[idx] = { ...updated[idx], [field]: value };
-    setAgentInputs(updated);
+  function updateAgent(idx: number, updates: Partial<AgentInput>) {
+    const arr = [...agentInputs];
+    arr[idx] = { ...arr[idx], ...updates };
+    setAgentInputs(arr);
   }
-
-  const font = "'Press Start 2P', monospace";
 
   return (
     <div
@@ -80,14 +91,14 @@ export function StartupLobby() {
         background: `linear-gradient(180deg, #020208 0%, ${COLORS.bgPrimary} 40%, ${COLORS.bgSecondary} 100%)`,
         overflow: "auto",
         padding: "40px",
-        fontFamily: font,
+        fontFamily: FONTS.body,
       }}
     >
       <button
         onClick={() => setMainPhase("mode-select")}
         style={{
-          fontFamily: font,
-          fontSize: "8px",
+          fontFamily: FONTS.pixel,
+          fontSize: STARTUP_SIZES.body,
           color: COLORS.textSecondary,
           background: "transparent",
           border: "none",
@@ -100,74 +111,96 @@ export function StartupLobby() {
         {"<"} BACK TO MODES
       </button>
 
-      <div style={{ fontSize: "16px", color: ACCENT, letterSpacing: "0.15em", marginBottom: "40px", textAlign: "center" }}>
+      <div style={{ fontSize: "18px", color: ACCENT, letterSpacing: "0.15em", marginBottom: "40px", textAlign: "center", fontFamily: FONTS.pixel }}>
         AI STARTUP ARENA
       </div>
 
-      <div style={{ maxWidth: "500px", margin: "0 auto", width: "100%" }}>
-        <div style={{ fontSize: "8px", color: COLORS.textSecondary, marginBottom: "16px" }}>NEW GAME</div>
+      <div style={{ maxWidth: "600px", margin: "0 auto", width: "100%" }}>
+        <div style={{ fontSize: STARTUP_SIZES.headerMd, color: COLORS.textSecondary, marginBottom: "20px", fontFamily: FONTS.pixel }}>NEW GAME</div>
 
-        {/* Agent Inputs */}
+        {/* Agent Cards */}
         <div style={{ marginBottom: "20px" }}>
-          <label style={{ fontSize: "7px", color: COLORS.textSecondary, display: "block", marginBottom: "8px" }}>AI FOUNDERS</label>
+          <label style={{ fontSize: STARTUP_SIZES.body, color: COLORS.textSecondary, display: "block", marginBottom: "12px" }}>
+            AI FOUNDERS ({agentInputs.length}/4)
+          </label>
           {agentInputs.map((agent, idx) => (
-            <div key={idx} style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "center" }}>
-              <input
-                value={agent.agentName}
-                onChange={(e) => updateAgent(idx, "agentName", e.target.value)}
-                placeholder="Company Name"
-                style={{
-                  fontFamily: font,
-                  fontSize: "8px",
-                  padding: "8px 12px",
-                  background: "rgba(0,0,0,0.4)",
-                  border: `1px solid ${COLORS.textSecondary}30`,
-                  color: COLORS.textPrimary,
-                  flex: 1,
-                }}
-              />
-              <input
-                value={agent.agentId}
-                onChange={(e) => updateAgent(idx, "agentId", e.target.value)}
-                placeholder="Agent ID (optional)"
-                style={{
-                  fontFamily: font,
-                  fontSize: "7px",
-                  padding: "8px 12px",
-                  background: "rgba(0,0,0,0.4)",
-                  border: `1px solid ${COLORS.textSecondary}30`,
-                  color: COLORS.textSecondary,
-                  flex: 1,
-                }}
-              />
-              {agentInputs.length > 2 && (
-                <button
-                  onClick={() => removeAgent(idx)}
+            <div
+              key={idx}
+              style={{
+                padding: "16px",
+                background: "rgba(0,0,0,0.4)",
+                border: `1px solid ${COLORS.textSecondary}30`,
+                marginBottom: "12px",
+              }}
+            >
+              {/* Name row */}
+              <div style={{ display: "flex", gap: "8px", marginBottom: "12px", alignItems: "center" }}>
+                <input
+                  value={agent.agentName}
+                  onChange={(e) => updateAgent(idx, { agentName: e.target.value })}
+                  placeholder="Company Name"
                   style={{
-                    fontFamily: font,
-                    fontSize: "8px",
-                    color: COLORS.accentRed,
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "4px",
+                    fontFamily: FONTS.body,
+                    fontSize: STARTUP_SIZES.headerMd,
+                    padding: "8px 12px",
+                    background: "rgba(0,0,0,0.4)",
+                    border: `1px solid ${COLORS.textSecondary}30`,
+                    color: COLORS.textPrimary,
+                    flex: 1,
                   }}
-                >
-                  X
-                </button>
-              )}
+                />
+                {agentInputs.length > 2 && (
+                  <button
+                    onClick={() => removeAgent(idx)}
+                    style={{
+                      fontFamily: FONTS.pixel,
+                      fontSize: STARTUP_SIZES.body,
+                      color: COLORS.accentRed,
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px 8px",
+                    }}
+                  >
+                    X
+                  </button>
+                )}
+              </div>
+
+              {/* Preset grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                {STARTUP_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => updateAgent(idx, { presetId: preset.id })}
+                    style={{
+                      fontFamily: FONTS.body,
+                      fontSize: STARTUP_SIZES.body,
+                      color: agent.presetId === preset.id ? preset.color : COLORS.textSecondary,
+                      background: agent.presetId === preset.id ? `${preset.color}15` : "rgba(0,0,0,0.3)",
+                      border: `1px solid ${agent.presetId === preset.id ? preset.color + "60" : COLORS.textSecondary + "20"}`,
+                      padding: "8px 10px",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div style={{ fontWeight: "bold", marginBottom: "2px" }}>{preset.name}</div>
+                    <div style={{ fontSize: "7px", opacity: 0.7 }}>{preset.description}</div>
+                  </button>
+                ))}
+              </div>
             </div>
           ))}
           {agentInputs.length < 4 && (
             <button
               onClick={addAgent}
               style={{
-                fontFamily: font,
-                fontSize: "7px",
+                fontFamily: FONTS.pixel,
+                fontSize: STARTUP_SIZES.body,
                 color: ACCENT,
                 background: "transparent",
                 border: `1px dashed ${ACCENT}40`,
-                padding: "6px 12px",
+                padding: "10px 12px",
                 cursor: "pointer",
                 width: "100%",
               }}
@@ -181,8 +214,8 @@ export function StartupLobby() {
           onClick={handleCreate}
           disabled={loading}
           style={{
-            fontFamily: font,
-            fontSize: "10px",
+            fontFamily: FONTS.pixel,
+            fontSize: STARTUP_SIZES.headerMd,
             color: ACCENT,
             background: "transparent",
             border: `1px solid ${ACCENT}60`,
@@ -210,15 +243,15 @@ export function StartupLobby() {
 
       {/* Existing Games */}
       {games.length > 0 && (
-        <div style={{ maxWidth: "500px", margin: "40px auto 0", width: "100%" }}>
-          <div style={{ fontSize: "8px", color: COLORS.textSecondary, marginBottom: "16px" }}>EXISTING GAMES</div>
+        <div style={{ maxWidth: "600px", margin: "40px auto 0", width: "100%" }}>
+          <div style={{ fontSize: STARTUP_SIZES.headerSm, color: COLORS.textSecondary, marginBottom: "16px", fontFamily: FONTS.pixel }}>EXISTING GAMES</div>
           {games.map((game) => (
             <button
               key={game.id}
               onClick={() => watchGame(game)}
               style={{
-                fontFamily: font,
-                fontSize: "7px",
+                fontFamily: FONTS.body,
+                fontSize: STARTUP_SIZES.body,
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
@@ -236,6 +269,8 @@ export function StartupLobby() {
               <span
                 style={{
                   color: game.status === "running" ? ACCENT : game.status === "finished" ? COLORS.textSecondary : COLORS.accentOrange,
+                  fontFamily: FONTS.pixel,
+                  fontSize: STARTUP_SIZES.bodySm,
                 }}
               >
                 {game.status.toUpperCase()} {game.status === "running" ? `Q${game.currentTurn}` : ""}

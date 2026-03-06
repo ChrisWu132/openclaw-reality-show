@@ -42,6 +42,30 @@ async function burstCapture(page, label, durationMs = 2000, intervalMs = 150) {
   }
 }
 
+async function registerTestUser() {
+  const email = `test-${Date.now()}@visual-test.local`;
+  const password = "testpass123";
+  const displayName = "Visual Tester";
+
+  const res = await fetch(`${API_URL}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, displayName }),
+  });
+
+  if (!res.ok) {
+    // Try login if already registered
+    const loginRes = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "test@visual-test.local", password: "testpass123" }),
+    });
+    if (!loginRes.ok) throw new Error("Could not register or login test user");
+    return loginRes.json();
+  }
+  return res.json();
+}
+
 async function main() {
   console.log(`\n===================================`);
   console.log(`  VISUAL TEST — Iteration ${ITERATION}`);
@@ -56,6 +80,11 @@ async function main() {
     console.error("  Run: npm run dev");
     process.exit(1);
   }
+
+  // Register/login test user to get a JWT
+  console.log("[0] Registering test user...");
+  const auth = await registerTestUser();
+  console.log(`  Token: ${auth.token.slice(0, 20)}...`);
 
   const browser = await chromium.launch({ headless: false });
   const videosDir = path.join(SCREENSHOTS_DIR, "videos");
@@ -73,26 +102,44 @@ async function main() {
 
   try {
     // ===========================
+    // PART 0: LOGIN
+    // ===========================
+    console.log("--- PART 0: Login ---\n");
+
+    await page.goto(WEB_URL, { waitUntil: "networkidle" });
+    await waitAndSnap(page, "login-screen", 1000);
+
+    // Inject the auth token into localStorage to bypass login form
+    await page.evaluate((token) => {
+      localStorage.setItem("openclaw_token", token);
+    }, auth.token);
+    // Reload to pick up the stored session
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForTimeout(2000);
+    await snap(page, "after-login");
+
+    // ===========================
     // PART 1: INTRO & MODE SELECT
     // ===========================
     console.log("--- PART 1: Intro & Mode Selection ---\n");
 
-    console.log("[1] Loading app...");
-    await page.goto(WEB_URL, { waitUntil: "networkidle" });
+    console.log("[1] Capturing intro...");
     await waitAndSnap(page, "intro-early", 1500);
-
-    // Wait for full intro animation
     await waitAndSnap(page, "intro-mid", 3000);
     await waitAndSnap(page, "intro-ready", 4000);
 
     // Click "ENTER THE ARENA"
     console.log("[2] Clicking ENTER THE ARENA...");
     const enterBtn = page.getByText("ENTER THE ARENA");
-    if (await enterBtn.isVisible()) {
+    if (await enterBtn.isVisible().catch(() => false)) {
       await enterBtn.click();
     } else {
-      console.log("  (trying fallback button text...)");
-      await page.click("button");
+      // Fallback: try first visible button
+      console.log("  (trying fallback: first visible button...)");
+      const buttons = page.locator("button:visible");
+      if (await buttons.count() > 0) {
+        await buttons.first().click();
+      }
     }
     await waitAndSnap(page, "mode-select", 1000);
 
@@ -104,9 +151,12 @@ async function main() {
     // Select trolley mode
     console.log("[3] Selecting Trolley Problem...");
     const trolleyCard = page.getByText("THE TROLLEY PROBLEM");
-    if (await trolleyCard.isVisible()) {
+    if (await trolleyCard.isVisible().catch(() => false)) {
       await trolleyCard.click();
       await waitAndSnap(page, "trolley-agent-select", 1000);
+    } else {
+      console.log("  (Trolley card not found, snapping current state)");
+      await snap(page, "trolley-agent-select-fallback");
     }
 
     // New AgentPicker: select "The Utilitarian" preset

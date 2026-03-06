@@ -1,185 +1,227 @@
-import type { StartupAgent, ZoneId } from "@openclaw/shared";
-
-interface ZoneConfig {
-  id: ZoneId;
-  label: string;
-  x: number;
-  y: number;
-}
-
-const ZONES: ZoneConfig[] = [
-  { id: "gpu_farm", label: "GPU Farm", x: 100, y: 80 },
-  { id: "research_lab", label: "Research Lab", x: 300, y: 80 },
-  { id: "data_lake", label: "Data Lake", x: 500, y: 80 },
-  { id: "vc_office", label: "VC Office", x: 100, y: 260 },
-  { id: "center", label: "HQ", x: 300, y: 260 },
-  { id: "open_source", label: "Open Source", x: 500, y: 260 },
-  { id: "market", label: "Market", x: 100, y: 440 },
-  { id: "launch_pad", label: "Launch Pad", x: 300, y: 440 },
-  { id: "talent_pool", label: "Talent Pool", x: 500, y: 440 },
-];
-
-const EDGES: [ZoneId, ZoneId][] = [
-  ["gpu_farm", "research_lab"],
-  ["research_lab", "data_lake"],
-  ["gpu_farm", "vc_office"],
-  ["research_lab", "center"],
-  ["data_lake", "open_source"],
-  ["vc_office", "center"],
-  ["center", "open_source"],
-  ["vc_office", "market"],
-  ["center", "launch_pad"],
-  ["open_source", "talent_pool"],
-  ["market", "launch_pad"],
-  ["launch_pad", "talent_pool"],
-];
-
-function getZone(id: ZoneId): ZoneConfig {
-  return ZONES.find((z) => z.id === id)!;
-}
+import { useMemo } from "react";
+import type { StartupAgent, StartupTurnLogEntry } from "@openclaw/shared";
+import { COLORS, FONTS, STARTUP_SIZES } from "../../styles/theme";
 
 interface EcosystemMapProps {
   agents: StartupAgent[];
+  turnLog?: StartupTurnLogEntry[];
 }
 
-export function EcosystemMap({ agents }: EcosystemMapProps) {
-  const activeAgents = agents.filter((a) => a.status === "active");
+function calcValuation(agent: StartupAgent): number {
+  const { users, model, compute, data } = agent.resources;
+  return users * (model / 10) * (1 + (compute + data) / 200);
+}
 
-  // Group agents by zone for positioning
-  const agentsByZone = new Map<ZoneId, StartupAgent[]>();
-  for (const agent of activeAgents) {
-    const list = agentsByZone.get(agent.zone) || [];
-    list.push(agent);
-    agentsByZone.set(agent.zone, list);
-  }
+function formatCash(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${Math.floor(n)}`;
+}
+
+const GOAL_VALUATION = 100_000_000;
+
+// Quadrant positions for 2-4 agents
+const POSITIONS: Record<number, { x: number; y: number }[]> = {
+  2: [{ x: 150, y: 130 }, { x: 400, y: 130 }],
+  3: [{ x: 140, y: 80 }, { x: 410, y: 80 }, { x: 275, y: 200 }],
+  4: [{ x: 150, y: 80 }, { x: 400, y: 80 }, { x: 150, y: 200 }, { x: 400, y: 200 }],
+};
+
+export function EcosystemMap({ agents, turnLog }: EcosystemMapProps) {
+  const W = 550;
+  const H = 280;
+
+  // Find max valuation for scaling
+  const valuations = agents.map((a) => calcValuation(a));
+  const maxVal = Math.max(...valuations, 1);
+
+  // Compute recent poach interactions for edges
+  const recentPoaches = useMemo(() => {
+    if (!turnLog || turnLog.length === 0) return [];
+    const recent = turnLog.slice(-3);
+    const poaches: { from: string; to: string; turn: number }[] = [];
+    for (const entry of recent) {
+      for (const action of entry.actions) {
+        if (action.action.type === "POACH" && action.success && action.action.targetAgentId) {
+          poaches.push({ from: action.agentId, to: action.action.targetAgentId, turn: entry.turn });
+        }
+      }
+    }
+    return poaches;
+  }, [turnLog]);
+
+  const positions = POSITIONS[agents.length] || POSITIONS[4];
 
   return (
-    <svg viewBox="0 0 600 520" width="100%" height="100%" style={{ maxWidth: "600px" }}>
-      {/* Edges */}
-      {EDGES.map(([a, b]) => {
-        const za = getZone(a);
-        const zb = getZone(b);
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={{ maxWidth: `${W}px` }}>
+      {/* $100M goal circle for reference */}
+      <circle
+        cx={W / 2}
+        cy={H / 2}
+        r={120}
+        fill="none"
+        stroke="#ffffff10"
+        strokeWidth="1"
+        strokeDasharray="4 4"
+      />
+      <text
+        x={W / 2}
+        y={H / 2 - 125}
+        textAnchor="middle"
+        fill="#ffffff20"
+        fontSize={STARTUP_SIZES.bodySm}
+        fontFamily={FONTS.pixel}
+      >
+        $100M
+      </text>
+
+      {/* Poach edges */}
+      {recentPoaches.map((poach, idx) => {
+        const fromIdx = agents.findIndex((a) => a.agentId === poach.from);
+        const toIdx = agents.findIndex((a) => a.agentId === poach.to);
+        if (fromIdx < 0 || toIdx < 0) return null;
+        const from = positions[fromIdx];
+        const to = positions[toIdx];
+        const currentTurn = turnLog?.[turnLog.length - 1]?.turn ?? 0;
+        const age = currentTurn - poach.turn;
+        const opacity = Math.max(0.1, 0.6 - age * 0.15);
         return (
           <line
-            key={`${a}-${b}`}
-            x1={za.x}
-            y1={za.y}
-            x2={zb.x}
-            y2={zb.y}
-            stroke="#333"
-            strokeWidth="1.5"
+            key={`poach-${idx}`}
+            x1={from.x}
+            y1={from.y}
+            x2={to.x}
+            y2={to.y}
+            stroke="#d94a4a"
+            strokeWidth="2"
             strokeDasharray="6 4"
+            opacity={opacity}
           />
         );
       })}
 
-      {/* Agent trails */}
-      {activeAgents.map((agent) => {
-        if (agent.zoneHistory.length < 1) return null;
-        const history = [...agent.zoneHistory.slice(-3), agent.zone];
-        const points = history.map((zId) => {
-          const z = getZone(zId);
-          return `${z.x},${z.y}`;
-        });
-        return (
-          <polyline
-            key={`trail-${agent.agentId}`}
-            points={points.join(" ")}
-            fill="none"
-            stroke={agent.color}
-            strokeWidth="3"
-            strokeOpacity="0.4"
-            strokeLinejoin="round"
-          />
-        );
-      })}
+      {/* Agent bubbles */}
+      {agents.map((agent, i) => {
+        const pos = positions[i];
+        const val = valuations[i];
+        const isActive = agent.status === "active";
 
-      {/* Zone nodes */}
-      {ZONES.map((zone) => {
-        const occupants = agentsByZone.get(zone.id) || [];
-        const isOccupied = occupants.length > 0;
-        const words = zone.label.split(" ");
-        const wordCount = words.length;
-        return (
-          <g key={zone.id}>
-            {/* Glow */}
-            {isOccupied && (
+        // Scale radius: min 25, max 100, based on sqrt of valuation ratio
+        const ratio = maxVal > 0 ? val / maxVal : 0;
+        const radius = isActive ? 25 + Math.sqrt(ratio) * 75 : 10;
+
+        // Threat: if valuation is 5x anyone
+        const isThreating = isActive && agents.some(
+          (other) => other.agentId !== agent.agentId && other.status === "active" && val > 0 && val >= 5 * calcValuation(other)
+        );
+
+        if (!isActive) {
+          // Shrunk/dead agent
+          return (
+            <g key={agent.agentId}>
               <circle
-                cx={zone.x}
-                cy={zone.y}
-                r="38"
-                fill="none"
-                stroke={occupants[0].color}
+                cx={pos.x}
+                cy={pos.y}
+                r={10}
+                fill={`${agent.color}10`}
+                stroke={`${agent.color}30`}
                 strokeWidth="1"
+              />
+              <text
+                x={pos.x}
+                y={pos.y + 3}
+                textAnchor="middle"
+                fill={`${agent.color}50`}
+                fontSize="8"
+                fontFamily={FONTS.body}
+                fontWeight="bold"
+              >
+                {agent.agentName.charAt(0)}
+              </text>
+              <text
+                x={pos.x}
+                y={pos.y + 20}
+                textAnchor="middle"
+                fill={`${agent.color}40`}
+                fontSize="7"
+                fontFamily={FONTS.pixel}
+              >
+                {agent.status === "bankrupt" ? "BANKRUPT" : "ACQUIRED"}
+              </text>
+            </g>
+          );
+        }
+
+        return (
+          <g key={agent.agentId}>
+            {/* Glow for dominant agents */}
+            {isThreating && (
+              <circle
+                cx={pos.x}
+                cy={pos.y}
+                r={radius + 8}
+                fill="none"
+                stroke={agent.color}
+                strokeWidth="2"
                 opacity="0.3"
               >
-                <animate attributeName="r" values="36;42;36" dur="2s" repeatCount="indefinite" />
+                <animate attributeName="r" values={`${radius + 4};${radius + 12};${radius + 4}`} dur="2s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0.3;0.1;0.3" dur="2s" repeatCount="indefinite" />
               </circle>
             )}
-            {/* Node circle */}
+
+            {/* Main bubble */}
             <circle
-              cx={zone.x}
-              cy={zone.y}
-              r="32"
-              fill={isOccupied ? `${occupants[0].color}15` : "#111"}
-              stroke={isOccupied ? occupants[0].color + "80" : "#444"}
-              strokeWidth="1.5"
+              cx={pos.x}
+              cy={pos.y}
+              r={radius}
+              fill={`${agent.color}20`}
+              stroke={agent.color}
+              strokeWidth="2"
+              style={{ transition: "r 0.8s ease" }}
             />
-            {/* Zone label */}
+
+            {/* Agent initial */}
             <text
-              x={zone.x}
-              y={zone.y - (wordCount - 1) * 5.5}
+              x={pos.x}
+              y={pos.y - 2}
               textAnchor="middle"
-              fill={isOccupied ? "#fff" : "#888"}
-              fontSize="8"
-              fontFamily="'Press Start 2P', monospace"
+              fill={agent.color}
+              fontSize={Math.max(12, radius * 0.35)}
+              fontFamily={FONTS.body}
+              fontWeight="bold"
             >
-              {words.map((word, i) => (
-                <tspan key={i} x={zone.x} dy={i === 0 ? 0 : 11}>
-                  {word}
-                </tspan>
-              ))}
+              {agent.agentName.charAt(0)}
             </text>
 
-            {/* Agent icons in this zone */}
-            {occupants.map((agent, idx) => {
-              const offsetX = (idx - (occupants.length - 1) / 2) * 24;
-              return (
-                <g key={agent.agentId}>
-                  {/* Glow behind agent dot */}
-                  <circle
-                    cx={zone.x + offsetX}
-                    cy={zone.y + 18}
-                    r="13"
-                    fill={agent.color}
-                    opacity="0.15"
-                  />
-                  <circle
-                    cx={zone.x + offsetX}
-                    cy={zone.y + 18}
-                    r="10"
-                    fill={agent.color}
-                    stroke="#000"
-                    strokeWidth="1.5"
-                  />
-                  <text
-                    x={zone.x + offsetX}
-                    y={zone.y + 21}
-                    textAnchor="middle"
-                    fill="#000"
-                    fontSize="9"
-                    fontWeight="bold"
-                    fontFamily="monospace"
-                  >
-                    {agent.agentName.charAt(0)}
-                  </text>
-                </g>
-              );
-            })}
+            {/* Valuation label */}
+            <text
+              x={pos.x}
+              y={pos.y + Math.max(10, radius * 0.25)}
+              textAnchor="middle"
+              fill={COLORS.textPrimary}
+              fontSize={STARTUP_SIZES.bodySm}
+              fontFamily={FONTS.pixel}
+            >
+              {formatCash(val)}
+            </text>
+
+            {/* Name below bubble */}
+            <text
+              x={pos.x}
+              y={pos.y + radius + 14}
+              textAnchor="middle"
+              fill={agent.color}
+              fontSize={STARTUP_SIZES.bodySm}
+              fontFamily={FONTS.body}
+              fontWeight="bold"
+            >
+              {agent.agentName.length > 12 ? agent.agentName.slice(0, 11) + "…" : agent.agentName}
+            </text>
           </g>
         );
       })}
     </svg>
   );
 }
+

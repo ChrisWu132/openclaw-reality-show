@@ -82,7 +82,7 @@ function RoundTransition() {
         justifyContent: "center",
         fontFamily: "'Press Start 2P', monospace",
         zIndex: 25,
-        animation: "fadeIn 0.3s ease-in",
+        animation: "scaleIn 0.6s ease-out",
       }}
     >
       <div style={{

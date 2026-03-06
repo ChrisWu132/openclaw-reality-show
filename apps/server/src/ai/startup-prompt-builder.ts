@@ -119,3 +119,49 @@ export function buildStartupTurnMessage(
 
   return parts.join("\n");
 }
+
+export function buildOpenClawStartupPrompt(
+  game: StartupGame,
+  agentId: string,
+  turn: number,
+  marketEvent: MarketEvent
+): string {
+  const systemPrompt = buildStartupSystemPrompt();
+  const turnMessage = buildStartupTurnMessage(game, agentId, turn, marketEvent);
+  return `${systemPrompt}\n\n---\n\n${turnMessage}`;
+}
+
+export function buildNarrativePrompt(game: StartupGame): string {
+  const parts: string[] = [];
+  parts.push("## AI Startup Arena — Game Summary");
+  parts.push(`Game lasted ${game.currentTurn} quarters.`);
+  parts.push(`Winner: ${game.agents.find((a) => a.agentId === game.winner)?.agentName || "None"}`);
+  parts.push(`Win condition: ${game.winCondition || "unknown"}`);
+
+  parts.push("\n## Final Standings");
+  for (const agent of game.agents) {
+    const val = calcValuation(agent);
+    parts.push(`- ${agent.agentName}: Status=${agent.status}, Valuation=$${Math.floor(val).toLocaleString()}, Users=${agent.resources.users.toLocaleString()}, Model=${agent.resources.model}`);
+    if (agent.eliminatedOnTurn) parts.push(`  Eliminated Q${agent.eliminatedOnTurn}`);
+  }
+
+  // Key moments
+  parts.push("\n## Key Moments");
+  for (const entry of game.turnLog) {
+    const notable: string[] = [];
+    for (const a of entry.actions) {
+      if (a.action.type === "POACH" && a.success) notable.push(`${game.agents.find((ag) => ag.agentId === a.agentId)?.agentName} poached from ${game.agents.find((ag) => ag.agentId === a.action.targetAgentId)?.agentName}`);
+      if (a.action.type === "OPEN_SOURCE" && a.success) notable.push(`${game.agents.find((ag) => ag.agentId === a.agentId)?.agentName} open-sourced their model`);
+    }
+    if (entry.eliminations.length > 0) notable.push(`Bankruptcies: ${entry.eliminations.map((id) => game.agents.find((a) => a.agentId === id)?.agentName).join(", ")}`);
+    if (entry.acquisitions.length > 0) notable.push(`Acquisitions: ${entry.acquisitions.map((acq) => `${game.agents.find((a) => a.agentId === acq.acquirer)?.agentName} acquired ${game.agents.find((a) => a.agentId === acq.target)?.agentName}`).join(", ")}`);
+    if (entry.marketEvent.type !== "NONE") notable.push(`Market: ${entry.marketEvent.description}`);
+    if (notable.length > 0) {
+      parts.push(`Q${entry.turn}: ${notable.join("; ")}`);
+    }
+  }
+
+  parts.push("\nWrite a dramatic 3-5 paragraph narrative of this game. Include the strategic arcs, key turning points, and what made the winner succeed. Be vivid and engaging.");
+
+  return parts.join("\n");
+}

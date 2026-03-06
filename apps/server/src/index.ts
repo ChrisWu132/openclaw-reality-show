@@ -8,6 +8,7 @@ import { initDatabase } from "./db/database.js";
 import { sessionRouter } from "./routes/session.js";
 import { startupRouter } from "./routes/startup.js";
 import { authRouter } from "./routes/auth.js";
+import { relayRouter } from "./routes/relay.js";
 import { endSessionSSE } from "./sse/sse-connections.js";
 import { createLogger } from "./utils/logger.js";
 import { sessions } from "./engine/state-manager.js";
@@ -42,6 +43,7 @@ async function startServer(): Promise<void> {
   app.use("/api", authRouter);
   app.use("/api", sessionRouter);
   app.use("/api", startupRouter);
+  app.use("/api", relayRouter);
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", activeSessions: sessions.size });

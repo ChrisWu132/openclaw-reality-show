@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { PERSONALITY_PRESETS } from "@openclaw/shared";
+import { PERSONALITY_PRESETS, STARTUP_PRESETS } from "@openclaw/shared";
 import type { PresetId } from "@openclaw/shared";
 import { createLogger } from "../utils/logger.js";
 
@@ -9,6 +9,7 @@ const logger = createLogger("personality-loader");
 const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 const PERSONALITIES_DIR = resolve(PROJECT_ROOT, "personalities");
 const PRESETS_DIR = resolve(PERSONALITIES_DIR, "presets");
+const STARTUP_PRESETS_DIR = resolve(PRESETS_DIR, "startup");
 const WORLD_BIBLE_PATH = resolve(PROJECT_ROOT, "docs", "WORLD_BIBLE.md");
 
 const cache = new Map<string, string>();
@@ -42,11 +43,25 @@ export async function loadPresetPersonalities(): Promise<void> {
   }
 }
 
+export async function loadStartupPresetPersonalities(): Promise<void> {
+  for (const preset of STARTUP_PRESETS) {
+    const filePath = resolve(STARTUP_PRESETS_DIR, `${preset.id}.md`);
+    try {
+      const content = await readFile(filePath, "utf-8");
+      cache.set(`preset:startup:${preset.id}`, content);
+      logger.info(`Loaded startup preset personality: ${preset.id}`);
+    } catch (err) {
+      logger.warn(`Failed to load startup preset personality: ${preset.id}`, { error: (err as Error).message });
+    }
+  }
+}
+
 export async function loadAllPersonalities(): Promise<Map<string, string>> {
   logger.info("Loading personalities and World Bible");
   await loadWorldBible();
   await loadCoordinatorPersonality();
   await loadPresetPersonalities();
+  await loadStartupPresetPersonalities();
   logger.info("Personalities loaded", { count: cache.size });
   return cache;
 }

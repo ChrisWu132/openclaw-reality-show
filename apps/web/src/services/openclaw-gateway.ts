@@ -1,11 +1,11 @@
-const OPENCLAW_WS_URL = "ws://localhost:18789";
+export const DEFAULT_OPENCLAW_URL = "ws://localhost:18789";
 const PROBE_TIMEOUT = 3000;
 const REQUEST_TIMEOUT = 45000;
 
-export async function probeOpenClaw(): Promise<boolean> {
+export async function probeOpenClaw(url: string = DEFAULT_OPENCLAW_URL): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     try {
-      const ws = new WebSocket(OPENCLAW_WS_URL);
+      const ws = new WebSocket(url);
       const timer = setTimeout(() => {
         ws.close();
         resolve(false);
@@ -31,10 +31,16 @@ export class OpenClawRelay {
   private pendingRequests = new Map<string, { resolve: (text: string) => void; reject: (err: Error) => void }>();
   private messageId = 0;
 
+  private url: string = DEFAULT_OPENCLAW_URL;
+
+  setUrl(url: string): void {
+    this.url = url;
+  }
+
   async connect(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       try {
-        this.ws = new WebSocket(OPENCLAW_WS_URL);
+        this.ws = new WebSocket(this.url);
         const timer = setTimeout(() => {
           reject(new Error("OpenClaw connection timed out"));
         }, PROBE_TIMEOUT);

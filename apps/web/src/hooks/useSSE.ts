@@ -5,9 +5,11 @@ import { openClawRelay } from "../services/openclaw-gateway";
 
 export function useSSE(sseUrl: string | null): void {
   const esRef = useRef<EventSource | null>(null);
+  const sessionEndedRef = useRef(false);
 
   useEffect(() => {
     if (!sseUrl) return;
+    sessionEndedRef.current = false;
 
     // Append user JWT as query param for SSE auth
     const token = useAuthStore.getState().token;
@@ -25,6 +27,7 @@ export function useSSE(sseUrl: string | null): void {
       "session_end",
       "error",
       "openclaw_request",
+      "waiting_for_relay",
     ];
 
     for (const eventType of EVENT_TYPES) {
@@ -36,7 +39,19 @@ export function useSSE(sseUrl: string | null): void {
           return;
         }
 
+        if (eventType === "session_end") {
+          sessionEndedRef.current = true;
+        }
+
+        if (eventType === "waiting_for_relay") {
+          // Server is waiting for remote relay to connect — don't start game yet
+          // The AgentPicker/JoinCodeDisplay handles polling and starting
+          return;
+        }
+
         if (eventType === "openclaw_request") {
+          // If a join code is set, the relay page handles openclaw_request, not us
+          if (useGameStore.getState().joinCode) return;
           handleOpenClawRequest(sseUrl, event);
           return;
         }
@@ -46,6 +61,8 @@ export function useSSE(sseUrl: string | null): void {
     }
 
     es.onerror = () => {
+      // Suppress error when session ended normally (server closes the SSE)
+      if (sessionEndedRef.current) return;
       // EventSource auto-reconnects; only set error if connection is fully closed
       if (es.readyState === EventSource.CLOSED) {
         useGameStore.getState().setError("Connection lost");
@@ -75,6 +92,7 @@ async function handleOpenClawRequest(sseUrl: string, event: { requestId: string;
 
   try {
     if (!openClawRelay.connected) {
+      openClawRelay.setUrl(useGameStore.getState().openclawUrl);
       await openClawRelay.connect();
     }
     const text = await openClawRelay.sendPrompt(prompt);

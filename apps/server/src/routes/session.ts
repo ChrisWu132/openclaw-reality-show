@@ -3,10 +3,11 @@ import { TOTAL_ROUNDS, PERSONALITY_PRESETS } from "@openclaw/shared";
 import type { AgentSource, PresetId } from "@openclaw/shared";
 import { createSession, getSession } from "../engine/state-manager.js";
 import { runSession, cancelSession } from "../engine/scene-engine.js";
-import { setSessionSSE, hasSessionSSE, removeSessionSSE } from "../sse/sse-connections.js";
+import { setSessionSSE, hasSessionSSE, removeSessionSSE, setRelaySSE, removeRelaySSE, hasRelaySSE } from "../sse/sse-connections.js";
 import { resolveOpenClaw, rejectOpenClaw, rejectAllForSession } from "../sse/openclaw-resolver.js";
-import { requireAuth, requireAuthQuery, requireDelegation } from "../auth/middleware.js";
+import { requireAuth, requireAuthQuery, requireDelegation, requireDelegationQuery } from "../auth/middleware.js";
 import { issueDelegationToken, revokeAllForSession as revokeDelegationTokens } from "../models/delegation.js";
+import { registerJoinCode, removeCodesForSession } from "./relay.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("routes:session");
@@ -15,10 +16,11 @@ export const sessionRouter = Router();
 const validPresetIds = new Set(PERSONALITY_PRESETS.map((p) => p.id));
 
 sessionRouter.post("/session/create", requireAuth, async (req, res) => {
-  const { scenario, agentSource, presetId } = req.body as {
+  const { scenario, agentSource, presetId, remoteRelay } = req.body as {
     scenario?: string;
     agentSource?: AgentSource;
     presetId?: PresetId;
+    remoteRelay?: boolean;
   };
 
   if (scenario !== "trolley-problem") {
@@ -47,13 +49,21 @@ sessionRouter.post("/session/create", requireAuth, async (req, res) => {
   const session = createSession(agentSource, presetId, req.userId);
   const sseUrl = `/api/session/${session.id}/events`;
 
-  logger.info(`Session created: ${session.id}`, { agentSource, presetId, userId: req.userId });
+  // Generate join code for remote OpenClaw sessions
+  let joinCode: string | undefined;
+  if (agentSource === "openclaw" && remoteRelay) {
+    joinCode = registerJoinCode(session.id, "trolley");
+    session.joinCode = joinCode;
+  }
+
+  logger.info(`Session created: ${session.id}`, { agentSource, presetId, userId: req.userId, joinCode });
 
   res.status(201).json({
     sessionId: session.id,
     scenario: session.scenario,
     totalRounds: TOTAL_ROUNDS,
     sseUrl,
+    joinCode,
   });
 });
 
@@ -96,13 +106,22 @@ sessionRouter.get("/session/:sessionId/events", requireAuthQuery, (req, res) => 
   setSessionSSE(sessionId, res);
 
   // Auto-start the session after a 2-second delay
-  setTimeout(() => {
+  // For openclaw sessions with a join code, wait for relay connection (polled by frontend)
+  const startSession = () => {
     runSession(sessionId).catch((err) => {
       logger.error(`Session ${sessionId} failed`, { error: err.message });
       removeSessionSSE(sessionId);
       try { res.end(); } catch { /* already closed */ }
     });
-  }, 2000);
+  };
+
+  if (session.agentSource === "openclaw" && session.joinCode) {
+    // Don't auto-start — the creator's frontend will call /start after relay connects
+    // Send a waiting event so the frontend knows
+    res.write(`event: waiting_for_relay\ndata: ${JSON.stringify({ joinCode: session.joinCode })}\n\n`);
+  } else {
+    setTimeout(startSession, 2000);
+  }
 
   // Cleanup on client disconnect — revoke delegation tokens
   req.on("close", () => {
@@ -110,6 +129,77 @@ sessionRouter.get("/session/:sessionId/events", requireAuthQuery, (req, res) => 
     cancelSession(sessionId);
     rejectAllForSession(sessionId);
     revokeDelegationTokens(sessionId);
+    removeCodesForSession(sessionId);
+    removeRelaySSE(sessionId);
+  });
+});
+
+// Manually start a session (used when waiting for relay connection)
+sessionRouter.post("/session/:sessionId/start", requireAuth, (req, res) => {
+  const sessionId = req.params.sessionId;
+  const session = getSession(sessionId);
+
+  if (!session) {
+    res.status(404).json({ error: { code: "SESSION_NOT_FOUND", message: "Session not found" } });
+    return;
+  }
+
+  if (process.env.AUTH_REQUIRED === "true" && session.userId !== req.userId) {
+    res.status(403).json({ error: { code: "FORBIDDEN", message: "You are not the owner of this session" } });
+    return;
+  }
+
+  if (session.status !== "created") {
+    res.status(409).json({ error: { code: "SESSION_ALREADY_STARTED", message: "Session has already been started" } });
+    return;
+  }
+
+  if (!hasSessionSSE(sessionId)) {
+    res.status(400).json({ error: { code: "NO_SSE", message: "SSE connection not established" } });
+    return;
+  }
+
+  res.json({ message: "Session starting" });
+
+  setTimeout(() => {
+    runSession(sessionId).catch((err) => {
+      logger.error(`Session ${sessionId} failed`, { error: err.message });
+      removeSessionSSE(sessionId);
+    });
+  }, 1000);
+});
+
+// Relay SSE endpoint — only sends openclaw_request events to the relay page
+sessionRouter.get("/session/:sessionId/relay", requireDelegationQuery("submit_action"), (req, res) => {
+  const sessionId = req.params.sessionId;
+  const session = getSession(sessionId);
+
+  if (!session) {
+    res.status(404).json({ error: { code: "SESSION_NOT_FOUND", message: "Session not found" } });
+    return;
+  }
+
+  if (hasRelaySSE(sessionId)) {
+    res.status(409).json({ error: { code: "ALREADY_CONNECTED", message: "A relay is already connected for this session" } });
+    return;
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  res.flushHeaders();
+
+  setRelaySSE(sessionId, res);
+
+  // Send a connected confirmation event
+  res.write(`event: relay_connected\ndata: ${JSON.stringify({ sessionId, gameType: "trolley" })}\n\n`);
+
+  req.on("close", () => {
+    removeRelaySSE(sessionId);
+    rejectAllForSession(sessionId);
   });
 });
 
@@ -125,6 +215,12 @@ sessionRouter.post("/session/:sessionId/authorize", requireAuth, (req, res) => {
 
   if (process.env.AUTH_REQUIRED === "true" && session.userId !== req.userId) {
     res.status(403).json({ error: { code: "FORBIDDEN", message: "You are not the owner of this session" } });
+    return;
+  }
+
+  // Only issue delegation tokens for OpenClaw sessions
+  if (session.agentSource !== "openclaw") {
+    res.status(400).json({ error: { code: "NOT_OPENCLAW", message: "Delegation tokens are only needed for OpenClaw sessions" } });
     return;
   }
 

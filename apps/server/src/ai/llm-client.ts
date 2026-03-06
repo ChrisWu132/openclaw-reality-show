@@ -82,20 +82,34 @@ export async function getTrolleyDecision(session: Session, dilemma: Dilemma): Pr
   throw new Error("Unreachable: retry loop exited without returning");
 }
 
-export async function getStartupAction(game: StartupGame, agentId: string, turn: number, marketEvent: MarketEvent): Promise<StartupAction> {
+export async function getStartupAction(game: StartupGame, agentId: string, turn: number, marketEvent: MarketEvent, presetId?: string): Promise<StartupAction> {
   const llm = getProvider();
 
   let personality: string | undefined;
-  try {
-    personality = getCachedPersonality(`openclaw:${agentId}`);
-  } catch {
-    // No personality cached
+  // Try startup-specific preset first, then generic preset, then openclaw cache
+  if (presetId) {
+    try {
+      personality = getPresetPersonality(presetId as any);
+    } catch {
+      try {
+        personality = getCachedPersonality(`preset:startup:${presetId}`);
+      } catch {
+        // Fall through
+      }
+    }
+  }
+  if (!personality) {
+    try {
+      personality = getCachedPersonality(`openclaw:${agentId}`);
+    } catch {
+      // No personality cached
+    }
   }
 
   const systemPrompt = buildStartupSystemPrompt(personality);
   let userMessage = buildStartupTurnMessage(game, agentId, turn, marketEvent);
 
-  logger.info("Requesting startup action", { gameId: game.id, agentId, turn });
+  logger.info("Requesting startup action", { gameId: game.id, agentId, turn, presetId });
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -124,6 +138,23 @@ export async function getStartupAction(game: StartupGame, agentId: string, turn:
   }
 
   return { type: "TRAIN", targetAgentId: null, reasoning: "Unexpected: retry loop exited" };
+}
+
+export async function generateStartupNarrative(game: StartupGame): Promise<string> {
+  const llm = getProvider();
+  const { buildNarrativePrompt } = await import("./startup-prompt-builder.js");
+  const systemPrompt = "You are a dramatic business journalist narrating the rise and fall of AI startups. Write vivid, engaging prose. 3-5 paragraphs.";
+  const userMessage = buildNarrativePrompt(game);
+
+  logger.info("Generating startup narrative", { gameId: game.id });
+
+  try {
+    const rawText = await llm.getCompletion(systemPrompt, userMessage);
+    return rawText.replace(/^```(?:markdown)?\s*\n?/i, "").replace(/\n?```\s*$/, "").trim();
+  } catch (err) {
+    logger.error("Failed to generate startup narrative", { error: (err as Error).message });
+    return "The arena has concluded, but the full story remains untold.";
+  }
 }
 
 export async function generateProfileNarrative(session: Session): Promise<string> {

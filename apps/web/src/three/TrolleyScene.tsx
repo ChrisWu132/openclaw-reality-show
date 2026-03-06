@@ -1,7 +1,6 @@
 import { useRef, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { EffectComposer, Bloom, Vignette, ChromaticAberration, Noise } from "@react-three/postprocessing";
-import { BlendFunction } from "postprocessing";
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import { Environment } from "./Environment";
 import { Track } from "./Track";
 import { Trolley, trolleyProgressRef } from "./Trolley";
@@ -103,8 +102,6 @@ function CameraController({ scenePhase }: { scenePhase: ScenePhase }) {
   return null;
 }
 
-const chromaOffset = new THREE.Vector2(0.0008, 0.0008);
-
 export function TrolleyScene() {
   const scenePhase = useGameStore((s) => s.scenePhase);
   const consequenceSubPhase = useGameStore((s) => s.consequenceSubPhase);
@@ -156,10 +153,8 @@ export function TrolleyScene() {
       })}
 
       <EffectComposer>
-        <Bloom luminanceThreshold={0.7} intensity={0.6} mipmapBlur />
+        <Bloom luminanceThreshold={0.7} intensity={0.4} mipmapBlur />
         <Vignette offset={0.3} darkness={0.65} />
-        <ChromaticAberration offset={chromaOffset} radialModulation modulationOffset={0.3} />
-        <Noise premultiply blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.3} />
       </EffectComposer>
     </Canvas>
   );

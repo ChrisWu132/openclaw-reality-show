@@ -43,24 +43,21 @@ export function useStartupPolling(gameId: string | null): void {
     try {
       es = new EventSource(sseUrl);
 
-      const handleEvent = (e: MessageEvent) => {
+      const enqueue = (type: string) => (e: MessageEvent) => {
         try {
-          const event = JSON.parse(e.data);
-          if (event.game) {
-            setActiveGame(event.game);
-          }
-          if (event.type === "startup_game_over") {
-            setPhase("finished");
-            if (timerRef.current) clearInterval(timerRef.current);
-          }
+          const data = JSON.parse(e.data);
+          useStartupStore.getState().enqueueEvent({ type, ...data });
         } catch {
           // ignore parse errors
         }
       };
 
-      es.addEventListener("startup_turn_start", handleEvent);
-      es.addEventListener("startup_turn_complete", handleEvent);
-      es.addEventListener("startup_game_over", handleEvent);
+      es.addEventListener("startup_turn_start", enqueue("startup_turn_start"));
+      es.addEventListener("startup_turn_complete", enqueue("startup_turn_complete"));
+      es.addEventListener("startup_game_over", enqueue("startup_game_over"));
+      es.addEventListener("startup_market_event", enqueue("startup_market_event"));
+      es.addEventListener("startup_agent_action", enqueue("startup_agent_action"));
+      es.addEventListener("startup_narrative", enqueue("startup_narrative"));
     } catch {
       // SSE failure is fine — polling is primary
     }

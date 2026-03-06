@@ -10,6 +10,10 @@ const sessionConnections = new Map<string, Response>();
 // -- Startup game connections (1:N) --
 const startupConnections = new Map<string, Set<Response>>();
 
+// -- Relay connections (for remote OpenClaw) --
+// Key: sessionId (trolley) or gameId:agentId (startup)
+const relayConnections = new Map<string, Response>();
+
 // -- Heartbeat --
 const HEARTBEAT_INTERVAL = 15_000;
 const heartbeatTimers = new Map<Response, ReturnType<typeof setInterval>>();
@@ -60,6 +64,21 @@ export function removeSessionSSE(sessionId: string): void {
 }
 
 export function emitSessionEvent(sessionId: string, event: WSEvent): void {
+  // Route openclaw_request to relay connection if available
+  if (event.type === "openclaw_request") {
+    const relay = relayConnections.get(sessionId);
+    if (relay) {
+      try {
+        relay.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+        logger.debug(`Emitted openclaw_request to relay`, { sessionId });
+        return;
+      } catch {
+        removeRelaySSE(sessionId);
+        // Fall through to send to owner
+      }
+    }
+  }
+
   const res = sessionConnections.get(sessionId);
   if (!res) return;
   try {
@@ -99,6 +118,14 @@ export function removeStartupSSE(gameId: string, res: Response): void {
 }
 
 export function broadcastStartupEvent(gameId: string, event: StartupWSEvent): void {
+  // Route startup_openclaw_request to the relay connection for the specific agent
+  if (event.type === "startup_openclaw_request" && "agentId" in event) {
+    const relayKey = `${gameId}:${event.agentId}`;
+    if (emitStartupRelayEvent(relayKey, event)) {
+      return; // Sent to relay, don't broadcast to spectators
+    }
+  }
+
   const clients = startupConnections.get(gameId);
   if (!clients) return;
   const data = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
@@ -123,4 +150,51 @@ export function endAllStartupSSE(gameId: string): void {
     try { res.end(); } catch { /* already closed */ }
   }
   startupConnections.delete(gameId);
+}
+
+// -- Relay connections --
+
+export function setRelaySSE(key: string, res: Response): void {
+  relayConnections.set(key, res);
+  startHeartbeat(res);
+  logger.info(`Relay SSE connected for ${key}`);
+}
+
+export function hasRelaySSE(key: string): boolean {
+  return relayConnections.has(key);
+}
+
+export function removeRelaySSE(key: string): void {
+  const res = relayConnections.get(key);
+  if (res) {
+    stopHeartbeat(res);
+    relayConnections.delete(key);
+    logger.info(`Relay SSE disconnected for ${key}`);
+  }
+}
+
+export function endRelaySSE(key: string): void {
+  const res = relayConnections.get(key);
+  if (res) {
+    try { res.end(); } catch { /* already closed */ }
+    removeRelaySSE(key);
+  }
+}
+
+/**
+ * Emit an event to a startup relay connection.
+ * Key format: gameId:agentId
+ * Returns true if sent to relay, false if no relay found.
+ */
+export function emitStartupRelayEvent(key: string, event: StartupWSEvent): boolean {
+  const relay = relayConnections.get(key);
+  if (!relay) return false;
+  try {
+    relay.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+    logger.debug(`Emitted to startup relay: ${event.type}`, { key });
+    return true;
+  } catch {
+    removeRelaySSE(key);
+    return false;
+  }
 }

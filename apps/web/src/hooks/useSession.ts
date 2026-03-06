@@ -6,14 +6,14 @@ export function useSession() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createSession = useCallback(async () => {
+  const createSession = useCallback(async (remoteRelay?: boolean) => {
     // Read directly from store to avoid stale closure
     const { agentSource, presetId } = useGameStore.getState();
     if (!agentSource) return;
     setLoading(true);
     setError(null);
     try {
-      const { sessionId, sseUrl } = await createSessionApi(agentSource, presetId || undefined);
+      const { sessionId, sseUrl, joinCode } = await createSessionApi(agentSource, presetId || undefined, remoteRelay);
 
       // For OpenClaw mode, get a delegation token for the relay POST
       if (agentSource === "openclaw") {
@@ -22,6 +22,10 @@ export function useSession() {
           useGameStore.getState().setDelegationToken(delegationToken);
         } catch {
           // Non-fatal — delegation may not be required (AUTH_REQUIRED=false)
+        }
+        // Store join code if provided (remote relay mode)
+        if (joinCode) {
+          useGameStore.getState().setJoinCode(joinCode);
         }
       }
 

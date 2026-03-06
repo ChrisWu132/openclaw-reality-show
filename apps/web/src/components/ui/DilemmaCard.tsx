@@ -63,7 +63,7 @@ export function DilemmaCard() {
     >
       {/* Title — step 0 */}
       <div style={{
-        fontSize: "10px",
+        fontSize: "12px",
         color: COLORS.accentBlue,
         marginBottom: "8px",
         letterSpacing: "0.1em",
@@ -76,7 +76,7 @@ export function DilemmaCard() {
 
       {/* Description — step 1 */}
       <div style={{
-        fontSize: "12px",
+        fontSize: "13px",
         fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
         color: COLORS.textSecondary,
         lineHeight: "1.7",
@@ -113,14 +113,14 @@ export function DilemmaCard() {
                 }}
               >
                 <div style={{
-                  fontSize: "8px",
+                  fontSize: "10px",
                   color: isChosen ? COLORS.accentOrange : COLORS.textPrimary,
                   marginBottom: "4px",
                   transition: "color 0.4s ease",
                 }}>
                   {isChosen ? "\u25B8 " : ""}{choice.label}
                 </div>
-                <div style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', 'Courier New', monospace", color: COLORS.textSecondary, lineHeight: "1.6" }}>
+                <div style={{ fontSize: "12px", fontFamily: "'IBM Plex Mono', 'Courier New', monospace", color: COLORS.textSecondary, lineHeight: "1.6" }}>
                   {choice.description}
                 </div>
               </div>

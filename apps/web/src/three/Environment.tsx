@@ -3,6 +3,12 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useGameStore, type ScenePhase } from "../stores/gameStore";
 
+// Reusable objects to avoid per-frame allocations
+const _scaleVec = new THREE.Vector3();
+const _dirVec = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
+const _downVec = new THREE.Vector3(0, -1, 0);
+
 function Starfield() {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const count = 200;
@@ -16,23 +22,16 @@ function Starfield() {
     }
     return arr;
   }, []);
-  const phases = useMemo(() => {
-    const arr = new Float32Array(count);
-    for (let i = 0; i < count; i++) arr[i] = Math.random() * Math.PI * 2;
-    return arr;
-  }, []);
 
-  useFrame(({ clock }) => {
+  // Set matrices once — static starfield, no per-frame updates
+  useEffect(() => {
     if (!meshRef.current) return;
-    const t = clock.getElapsedTime();
     for (let i = 0; i < count; i++) {
-      const scale = 0.6 + Math.sin(t * 1.5 + phases[i]) * 0.4;
       dummy.makeTranslation(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
-      dummy.scale(new THREE.Vector3(scale, scale, scale));
       meshRef.current.setMatrixAt(i, dummy);
     }
     meshRef.current.instanceMatrix.needsUpdate = true;
-  });
+  }, [positions, dummy]);
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
@@ -233,8 +232,8 @@ function Buildings() {
       {BUILDINGS.map((b, i) => {
         const windowRows = Math.floor(b.h / 2);
         const windows = [];
-        const windowColor = b.warm ? "#886644" : "#334466";
-        const windowEmissive = b.warm ? "#886644" : "#445588";
+        const windowColor = b.warm ? "#aa8866" : "#556688";
+        const windowEmissive = b.warm ? "#aa8866" : "#667799";
         for (let row = 0; row < windowRows; row++) {
           for (let col = -1; col <= 1; col++) {
             if (seededRandom(i * 100 + row * 10 + col + 7) < 0.3) continue;
@@ -247,7 +246,7 @@ function Buildings() {
                 <meshStandardMaterial
                   color={windowColor}
                   emissive={windowEmissive}
-                  emissiveIntensity={1.2}
+                  emissiveIntensity={1.8}
                   toneMapped={false}
                 />
               </mesh>,
@@ -258,7 +257,7 @@ function Buildings() {
           <group key={i} position={[b.x, b.h / 2 - 0.5, b.z]} rotation={[0, b.ry, 0]}>
             <mesh>
               <boxGeometry args={[b.w, b.h, b.w]} />
-              <meshStandardMaterial color="#222240" roughness={0.9} />
+              <meshStandardMaterial color="#2a2a48" roughness={0.9} />
             </mesh>
             {i % 3 === 0 && (
               <mesh position={[0, b.h / 2 + 0.02, 0]}>
@@ -395,10 +394,9 @@ function Searchlight() {
 
     // Rotate cone to follow the beam direction
     if (coneRef.current) {
-      const dir = new THREE.Vector3(tx - origin.x, -13.5, tz - origin.z).normalize();
-      const quat = new THREE.Quaternion();
-      quat.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
-      coneRef.current.quaternion.copy(quat);
+      _dirVec.set(tx - origin.x, -13.5, tz - origin.z).normalize();
+      _quat.setFromUnitVectors(_downVec, _dirVec);
+      coneRef.current.quaternion.copy(_quat);
     }
   });
 
@@ -455,7 +453,7 @@ function Smokestacks() {
 
 function SmokeColumn({ x, y, z }: { x: number; y: number; z: number }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const count = 30;
+  const count = 15;
   const dummy = useMemo(() => new THREE.Matrix4(), []);
   const offsets = useMemo(() => {
     const arr = new Float32Array(count * 3);
@@ -483,7 +481,7 @@ function SmokeColumn({ x, y, z }: { x: number; y: number; z: number }) {
       const py = y + rawY;
       const pz = z + offsets[i * 3 + 2] + Math.cos(t * 0.3 + i * 2) * progress * 0.5;
       dummy.makeTranslation(px, py, pz);
-      dummy.scale(new THREE.Vector3(scale, scale * 0.7, scale));
+      dummy.scale(_scaleVec.set(scale, scale * 0.7, scale));
       meshRef.current.setMatrixAt(i, dummy);
     }
     meshRef.current.instanceMatrix.needsUpdate = true;
@@ -587,7 +585,7 @@ function PowerLines() {
 /** Light rain / industrial mist particles */
 function RainMist() {
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const count = 250;
+  const count = 80;
   const dummy = useMemo(() => new THREE.Matrix4(), []);
   const data = useMemo(() => {
     const positions = new Float32Array(count * 3);
@@ -610,7 +608,7 @@ function RainMist() {
       if (y < -0.5) y += 16;
       const z = data.positions[i * 3 + 2];
       dummy.makeTranslation(x, y, z);
-      dummy.scale(new THREE.Vector3(0.015, 0.15, 0.015));
+      dummy.scale(_scaleVec.set(0.015, 0.15, 0.015));
       meshRef.current.setMatrixAt(i, dummy);
     }
     meshRef.current.instanceMatrix.needsUpdate = true;

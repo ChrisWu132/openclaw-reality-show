@@ -52,3 +52,51 @@ export function rejectAllForSession(sessionId: string): void {
     }
   }
 }
+
+// ── Startup game OpenClaw resolvers ─────────────────────────────
+
+const startupResolvers = new Map<string, OpenClawResolver>();
+
+export function waitForStartupOpenClawResponse(gameId: string, requestId: string, timeoutMs: number): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const key = `startup:${gameId}:${requestId}`;
+    const timer = setTimeout(() => {
+      startupResolvers.delete(key);
+      reject(new Error(`OpenClaw response timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    startupResolvers.set(key, {
+      resolve: (text) => {
+        clearTimeout(timer);
+        startupResolvers.delete(key);
+        resolve(text);
+      },
+      reject: (err) => {
+        clearTimeout(timer);
+        startupResolvers.delete(key);
+        reject(err);
+      },
+    });
+  });
+}
+
+export function resolveStartupOpenClaw(gameId: string, requestId: string, error: string | null, text: string): boolean {
+  const key = `startup:${gameId}:${requestId}`;
+  const resolver = startupResolvers.get(key);
+  if (!resolver) return false;
+  if (error) {
+    resolver.reject(new Error(error));
+  } else {
+    resolver.resolve(text);
+  }
+  return true;
+}
+
+export function rejectAllForStartupGame(gameId: string): void {
+  for (const [key, resolver] of startupResolvers) {
+    if (key.startsWith(`startup:${gameId}:`)) {
+      resolver.reject(new Error("Game ended"));
+      startupResolvers.delete(key);
+    }
+  }
+}
