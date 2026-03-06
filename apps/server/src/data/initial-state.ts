@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import type { Session, MoralProfile, MoralDimension } from "@openclaw/shared";
+import type { Session, AgentSource, PresetId, MoralProfile, MoralDimension } from "@openclaw/shared";
 import { TOTAL_ROUNDS } from "@openclaw/shared";
 
 const DIMENSIONS: MoralDimension[] = [
@@ -17,7 +17,7 @@ function createEmptyMoralProfile(): MoralProfile {
   return { scores, totalSaved: 0, totalSacrificed: 0 };
 }
 
-export function createInitialSession(systemPrompt: string, agentId?: string, agentMemory?: string): Session {
+export function createInitialSession(agentSource: AgentSource, presetId?: PresetId): Session {
   return {
     id: uuid(),
     scenario: "trolley-problem",
@@ -27,8 +27,8 @@ export function createInitialSession(systemPrompt: string, agentId?: string, age
     moralProfile: createEmptyMoralProfile(),
     decisionLog: [],
     createdAt: Date.now(),
-    systemPrompt,
-    agentId,
-    agentMemory,
+    systemPrompt: "",
+    agentSource,
+    presetId,
   };
 }

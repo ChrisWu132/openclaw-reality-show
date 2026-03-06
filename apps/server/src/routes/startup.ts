@@ -1,8 +1,7 @@
 import { Router } from "express";
 import { createStartupGame, startStartupGame } from "../engine/startup-engine.js";
 import { loadGame, listGames, deleteGame } from "../engine/startup-store.js";
-import { loadPersonalityFromOpenClaw } from "../loaders/personality-loader.js";
-import { broadcastStartupEvent } from "../ws/ws-server.js";
+import { broadcastStartupEvent, addStartupSSE, removeStartupSSE, endAllStartupSSE } from "../sse/sse-connections.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("routes:startup");
@@ -17,15 +16,6 @@ startupRouter.post("/startup/games", async (req, res) => {
   if (!agents || !Array.isArray(agents) || agents.length < 2 || agents.length > 4) {
     res.status(400).json({ error: { code: "INVALID_AGENTS", message: "Provide 2-4 agents with agentId and agentName" } });
     return;
-  }
-
-  // Pre-load agent personalities (best effort)
-  for (const agent of agents) {
-    try {
-      await loadPersonalityFromOpenClaw(agent.agentId);
-    } catch {
-      logger.warn("Failed to preload personality", { agentId: agent.agentId });
-    }
   }
 
   try {
@@ -50,6 +40,31 @@ startupRouter.get("/startup/games/:id", (req, res) => {
     return;
   }
   res.json(game);
+});
+
+/** GET /api/startup/games/:id/events — SSE endpoint for startup game */
+startupRouter.get("/startup/games/:id/events", (req, res) => {
+  const gameId = req.params.id;
+  const game = loadGame(gameId);
+
+  if (!game) {
+    res.status(404).json({ error: { code: "GAME_NOT_FOUND", message: "Game not found" } });
+    return;
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  res.flushHeaders();
+
+  addStartupSSE(gameId, res);
+
+  req.on("close", () => {
+    removeStartupSSE(gameId, res);
+  });
 });
 
 /** POST /api/startup/games/:id/start — Start a lobby game */
@@ -83,9 +98,8 @@ startupRouter.post("/startup/games/:id/start", async (req, res) => {
         winCondition: g.winCondition!,
         game: g,
       });
-      postStartupToOpenClaw(g).catch((err) => {
-        logger.warn("Failed to post startup outcome to OpenClaw", { error: (err as Error).message });
-      });
+      // Close all spectator SSE connections after game over
+      endAllStartupSSE(g.id);
     }
   ).catch((err) => {
     logger.error("Startup game failed", { gameId: game.id, error: (err as Error).message });
@@ -101,37 +115,3 @@ startupRouter.delete("/startup/games/:id", (req, res) => {
   }
   res.json({ message: "Game deleted" });
 });
-
-/** Post startup outcomes to OpenClaw (fire-and-forget). */
-async function postStartupToOpenClaw(game: import("@openclaw/shared").StartupGame): Promise<void> {
-  const apiUrl = process.env.OPENCLAW_API_URL;
-  const apiKey = process.env.OPENCLAW_API_KEY;
-  if (!apiUrl) return;
-
-  for (const agent of game.agents) {
-    const won = agent.agentId === game.winner;
-
-    const incidentLog = game.turnLog
-      .flatMap((t) => t.actions.filter((a) => a.agentId === agent.agentId))
-      .map((a) => `${a.action.type} ${a.success ? "OK" : "FAIL"}: ${a.result}`)
-      .join("\n");
-
-    try {
-      await fetch(`${apiUrl}/agents/${agent.agentId}/sessions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          scenario: "ai-startup-arena",
-          outcome: won ? "victory" : agent.status === "bankrupt" ? "bankrupt" : agent.status === "acquired" ? "acquired" : "defeat",
-          incidentLog,
-          narrative: `${agent.agentName} ${won ? "won" : "lost"} an AI Startup Arena game. Final valuation: $${Math.floor(agent.resources.users * (agent.resources.model / 10) * (1 + (agent.resources.compute + agent.resources.data) / 200)).toLocaleString()}. Win condition: ${game.winCondition}.`,
-        }),
-      });
-    } catch {
-      // fire and forget
-    }
-  }
-}

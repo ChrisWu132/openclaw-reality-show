@@ -6,26 +6,24 @@ export function useSession() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const setPhase = useGameStore((s) => s.setPhase);
-  const setWsUrl = useGameStore((s) => s.setWsUrl);
-  const setStoreError = useGameStore((s) => s.setError);
-  const agentId = useGameStore((s) => s.agentId);
-
   const createSession = useCallback(async () => {
+    // Read directly from store to avoid stale closure
+    const { agentSource, presetId } = useGameStore.getState();
+    if (!agentSource) return;
     setLoading(true);
     setError(null);
     try {
-      const { wsUrl } = await createSessionApi(agentId || undefined);
-      setWsUrl(wsUrl);
-      setPhase("connecting");
+      const { sseUrl } = await createSessionApi(agentSource, presetId || undefined);
+      useGameStore.getState().setSseUrl(sseUrl);
+      useGameStore.getState().setPhase("connecting");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create session";
       setError(message);
-      setStoreError(message);
+      useGameStore.getState().setError(message);
     } finally {
       setLoading(false);
     }
-  }, [setPhase, setWsUrl, setStoreError, agentId]);
+  }, []);
 
   return { createSession, loading, error };
 }

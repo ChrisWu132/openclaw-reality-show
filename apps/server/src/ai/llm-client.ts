@@ -1,11 +1,11 @@
-import type { TrolleyDecision, Session, Dilemma, StartupAction, StartupGame, MarketEvent } from "@openclaw/shared";
+import type { TrolleyDecision, Session, Dilemma, StartupAction, StartupGame, MarketEvent, PresetId } from "@openclaw/shared";
 import type { LLMProvider } from "./llm-provider.js";
 import { createLLMProvider } from "./llm-provider.js";
 import { buildSystemPrompt, buildDilemmaMessage, buildProfileNarrativeMessage } from "./prompt-builder.js";
 import { buildStartupSystemPrompt, buildStartupTurnMessage } from "./startup-prompt-builder.js";
 import { parseTrolleyDecision } from "./response-parser.js";
 import { parseStartupAction } from "./startup-response-parser.js";
-import { loadPersonalityFromOpenClaw, getCachedPersonality } from "../loaders/personality-loader.js";
+import { getPresetPersonality, getCachedPersonality } from "../loaders/personality-loader.js";
 import { delay } from "../utils/delay.js";
 import { createLogger } from "../utils/logger.js";
 
@@ -26,22 +26,10 @@ function getProvider(): LLMProvider {
   return provider;
 }
 
-export async function initSystemPrompt(agentId?: string): Promise<string> {
-  let personalityName: string | undefined;
-
-  if (agentId) {
-    try {
-      await loadPersonalityFromOpenClaw(agentId);
-      personalityName = `openclaw:${agentId}`;
-    } catch (err) {
-      logger.warn("Failed to load OpenClaw personality, falling back to default", {
-        error: (err as Error).message,
-      });
-    }
-  }
-
+export function initSystemPrompt(presetId?: PresetId): string {
+  const personalityName = presetId ? `preset:${presetId}` : undefined;
   const prompt = buildSystemPrompt(personalityName);
-  logger.info("System prompt initialized", { promptLength: prompt.length });
+  logger.info("System prompt initialized", { promptLength: prompt.length, presetId });
   return prompt;
 }
 
@@ -91,19 +79,17 @@ export async function getTrolleyDecision(session: Session, dilemma: Dilemma): Pr
     }
   }
 
-  // Unreachable — for-loop always returns — but satisfies TypeScript
   throw new Error("Unreachable: retry loop exited without returning");
 }
 
 export async function getStartupAction(game: StartupGame, agentId: string, turn: number, marketEvent: MarketEvent): Promise<StartupAction> {
   const llm = getProvider();
 
-  // Try to load agent personality
   let personality: string | undefined;
   try {
     personality = getCachedPersonality(`openclaw:${agentId}`);
   } catch {
-    // No personality cached — that's fine
+    // No personality cached
   }
 
   const systemPrompt = buildStartupSystemPrompt(personality);
@@ -149,7 +135,6 @@ export async function generateProfileNarrative(session: Session): Promise<string
 
   try {
     const rawText = await llm.getCompletion(systemPrompt, userMessage);
-    // Strip markdown fences if present
     return rawText.replace(/^```(?:markdown)?\s*\n?/i, "").replace(/\n?```\s*$/, "").trim();
   } catch (err) {
     logger.error("Failed to generate profile narrative", { error: (err as Error).message });

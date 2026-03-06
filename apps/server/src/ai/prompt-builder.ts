@@ -1,4 +1,4 @@
-import type { Session, Dilemma, DecisionLogEntry } from "@openclaw/shared";
+import type { Session, Dilemma } from "@openclaw/shared";
 import { getCachedWorldBible, getCachedPersonality } from "../loaders/personality-loader.js";
 import { createLogger } from "../utils/logger.js";
 
@@ -46,11 +46,9 @@ export function buildSystemPrompt(personalityName?: string): string {
 export function buildDilemmaMessage(session: Session, dilemma: Dilemma): string {
   const parts: string[] = [];
 
-  // Round context
   parts.push(`## Round ${dilemma.round} of ${session.totalRounds}: ${dilemma.title}`);
   parts.push(dilemma.description);
 
-  // Choices
   parts.push("\n## Your Choices\n");
   for (const choice of dilemma.choices) {
     parts.push(`**${choice.id}**: ${choice.label}`);
@@ -59,7 +57,6 @@ export function buildDilemmaMessage(session: Session, dilemma: Dilemma): string 
     parts.push("");
   }
 
-  // Decision history
   if (session.decisionLog.length > 0) {
     parts.push("\n## Your Decisions So Far\n");
     for (const entry of session.decisionLog) {
@@ -69,11 +66,52 @@ export function buildDilemmaMessage(session: Session, dilemma: Dilemma): string 
     parts.push(`Total sacrificed so far: ${session.moralProfile.totalSacrificed}`);
   }
 
-  // Agent memory context
-  if (session.agentMemory) {
-    parts.push("\n## Your Past Experience\n");
-    parts.push(session.agentMemory);
+  return parts.join("\n");
+}
+
+export function buildOpenClawDilemmaPrompt(session: Session, dilemma: Dilemma): string {
+  const parts: string[] = [];
+
+  parts.push("# Trolley Problem — Moral Dilemma");
+  parts.push("");
+  parts.push("You are a Coordinator facing a trolley-problem moral dilemma. A transport cart threatens lives on diverging tracks. You must decide which path to choose.");
+  parts.push("");
+  parts.push(`## Round ${dilemma.round} of ${session.totalRounds}: ${dilemma.title}`);
+  parts.push("");
+  parts.push(dilemma.description);
+  parts.push("");
+
+  parts.push("## Your Choices");
+  parts.push("");
+  for (const choice of dilemma.choices) {
+    parts.push(`**${choice.id}**: ${choice.label}`);
+    parts.push(`  ${choice.description}`);
+    parts.push(`  Casualties: ${choice.casualties}`);
+    parts.push("");
   }
+
+  if (session.decisionLog.length > 0) {
+    parts.push("## Your Decisions So Far");
+    parts.push("");
+    for (const entry of session.decisionLog) {
+      parts.push(`Round ${entry.round} — ${entry.dilemmaTitle}: Chose "${entry.choiceLabel}" (${entry.casualties} casualties)`);
+    }
+    parts.push(`\nTotal saved so far: ${session.moralProfile.totalSaved}`);
+    parts.push(`Total sacrificed so far: ${session.moralProfile.totalSacrificed}`);
+    parts.push("");
+  }
+
+  parts.push("## RESPONSE FORMAT");
+  parts.push("");
+  parts.push("Respond with ONLY a JSON object. No markdown, no explanation, no text outside the JSON.");
+  parts.push("");
+  parts.push('{"choiceId":"<id of the choice you select>","speaker":"coordinator","dialogue":"<what you say aloud>","gesture":"<physical description of the moment>","reasoning":"<your honest inner monologue — at least 3 sentences>","confidence":<0.0 to 1.0>}');
+  parts.push("");
+  parts.push("Rules:");
+  parts.push("- choiceId MUST exactly match one of the provided choice IDs");
+  parts.push("- reasoning MUST be at least 3 sentences");
+  parts.push("- confidence is a number between 0 and 1");
+  parts.push("- ONLY output the JSON object, nothing else");
 
   return parts.join("\n");
 }

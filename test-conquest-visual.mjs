@@ -1,5 +1,5 @@
 /**
- * Visual E2E test for the full app — both game modes.
+ * Visual E2E test for the full app — Trolley Problem flow.
  * Takes screenshots at every key interaction point.
  *
  * Usage:
@@ -25,7 +25,7 @@ async function snap(page, label) {
   const name = `${String(shotIndex).padStart(2, "0")}-${label}.png`;
   const filePath = path.join(SCREENSHOTS_DIR, name);
   await page.screenshot({ path: filePath, fullPage: false });
-  console.log(`  📸 ${name}`);
+  console.log(`  [snap] ${name}`);
   return filePath;
 }
 
@@ -43,16 +43,16 @@ async function burstCapture(page, label, durationMs = 2000, intervalMs = 150) {
 }
 
 async function main() {
-  console.log(`\n═══════════════════════════════════════════`);
+  console.log(`\n===================================`);
   console.log(`  VISUAL TEST — Iteration ${ITERATION}`);
-  console.log(`═══════════════════════════════════════════\n`);
+  console.log(`===================================\n`);
 
   // Health check
   try {
     await fetch(`${API_URL}/api/health`);
-    console.log("✓ Server is running\n");
+    console.log("[ok] Server is running\n");
   } catch {
-    console.error("✗ Server not running at", API_URL);
+    console.error("[fail] Server not running at", API_URL);
     console.error("  Run: npm run dev");
     process.exit(1);
   }
@@ -72,10 +72,10 @@ async function main() {
   const page = await context.newPage();
 
   try {
-    // ════════════════════════════════════════
+    // ===========================
     // PART 1: INTRO & MODE SELECT
-    // ════════════════════════════════════════
-    console.log("─── PART 1: Intro & Mode Selection ───\n");
+    // ===========================
+    console.log("--- PART 1: Intro & Mode Selection ---\n");
 
     console.log("[1] Loading app...");
     await page.goto(WEB_URL, { waitUntil: "networkidle" });
@@ -91,16 +91,15 @@ async function main() {
     if (await enterBtn.isVisible()) {
       await enterBtn.click();
     } else {
-      // Fallback: try old text
       console.log("  (trying fallback button text...)");
       await page.click("button");
     }
     await waitAndSnap(page, "mode-select", 1000);
 
-    // ════════════════════════════════════════
+    // ===========================
     // PART 2: TROLLEY FLOW
-    // ════════════════════════════════════════
-    console.log("\n─── PART 2: Trolley Flow ───\n");
+    // ===========================
+    console.log("\n--- PART 2: Trolley Flow ---\n");
 
     // Select trolley mode
     console.log("[3] Selecting Trolley Problem...");
@@ -110,12 +109,21 @@ async function main() {
       await waitAndSnap(page, "trolley-agent-select", 1000);
     }
 
-    // Use default coordinator
-    console.log("[4] Selecting default coordinator...");
-    const defaultBtn = page.getByText("USE DEFAULT COORDINATOR");
-    if (await defaultBtn.isVisible().catch(() => false)) {
-      await defaultBtn.click();
+    // New AgentPicker: select "The Utilitarian" preset
+    console.log("[4] Selecting Utilitarian preset...");
+    const utilitarianBtn = page.getByText("The Utilitarian");
+    if (await utilitarianBtn.isVisible().catch(() => false)) {
+      await snap(page, "trolley-agent-picker");
+      await utilitarianBtn.click();
       await waitAndSnap(page, "trolley-loading", 2000);
+    } else {
+      // Fallback: try clicking first button in the QUICK PLAY section
+      console.log("  (trying fallback: first preset button...)");
+      const presetButtons = page.locator("button").filter({ hasText: /Utilitarian|Empath|By-the-Book/ });
+      if (await presetButtons.first().isVisible().catch(() => false)) {
+        await presetButtons.first().click();
+        await waitAndSnap(page, "trolley-loading", 2000);
+      }
     }
 
     // Wait for game to start
@@ -123,7 +131,8 @@ async function main() {
     try {
       await page.waitForSelector("text=ROUND", { timeout: 15000 });
     } catch {
-      console.log("  (ROUND text not found)");
+      console.log("  (ROUND text not found, waiting longer...)");
+      await page.waitForTimeout(5000);
     }
     await waitAndSnap(page, "trolley-round1-start", 2000);
 
@@ -158,29 +167,29 @@ async function main() {
       console.log(`  Burst capturing consequence animation...`);
       await burstCapture(page, `trolley-r${round}-consequence`, 1500, 150);
 
-      // Click to advance
+      // Click to advance to next round
       await page.click("body");
       await page.waitForTimeout(1500);
     }
 
     await snap(page, "trolley-final-state");
 
-    // ════════════════════════════════════════
+    // ===========================
     // SUMMARY
-    // ════════════════════════════════════════
-    console.log(`\n═══════════════════════════════════════════`);
+    // ===========================
+    console.log(`\n===================================`);
     console.log(`  DONE — ${shotIndex} screenshots saved`);
     console.log(`  Location: ${SCREENSHOTS_DIR}`);
-    console.log(`═══════════════════════════════════════════\n`);
+    console.log(`===================================\n`);
 
   } catch (err) {
-    console.error("\n✗ Test failed:", err.message);
+    console.error("\n[fail] Test failed:", err.message);
     await snap(page, "ERROR-final-state");
   } finally {
     const video = page.video();
     if (video) {
       const videoPath = await video.path();
-      console.log(`\n🎬 Video: ${videoPath}`);
+      console.log(`\n  Video: ${videoPath}`);
     }
     await context.close();
     await browser.close();

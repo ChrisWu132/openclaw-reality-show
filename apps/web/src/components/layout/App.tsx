@@ -1,5 +1,5 @@
 import { useGameStore } from "../../stores/gameStore";
-import { useWebSocket } from "../../hooks/useWebSocket";
+import { useSSE } from "../../hooks/useSSE";
 import { IntroScreen } from "../ui/IntroScreen";
 import { ModeSelector } from "../ui/ModeSelector";
 import { AgentPicker } from "../ui/AgentPicker";
@@ -11,9 +11,9 @@ import { ErrorOverlay } from "../ui/ErrorOverlay";
 
 export function App() {
   const phase = useGameStore((s) => s.phase);
-  const wsUrl = useGameStore((s) => s.wsUrl);
+  const sseUrl = useGameStore((s) => s.sseUrl);
 
-  useWebSocket(wsUrl);
+  useSSE(sseUrl);
 
   let content;
   switch (phase) {

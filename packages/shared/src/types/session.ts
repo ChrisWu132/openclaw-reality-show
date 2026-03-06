@@ -1,6 +1,8 @@
-import type { MoralDimension } from "./dilemma";
+import type { MoralDimension } from "./dilemma.js";
+import type { PresetId } from "../constants/presets.js";
 
 export type ScenarioId = "trolley-problem" | "ai-startup-arena";
+export type AgentSource = "openclaw" | "preset";
 export type SessionStatus = "created" | "running" | "ended";
 
 export interface MoralProfile {
@@ -30,6 +32,6 @@ export interface Session {
   decisionLog: DecisionLogEntry[];
   createdAt: number;
   systemPrompt: string;
-  agentId?: string;
-  agentMemory?: string;
+  agentSource: AgentSource;
+  presetId?: PresetId;
 }

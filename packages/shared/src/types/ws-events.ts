@@ -1,5 +1,5 @@
-import type { ScenarioId, MoralProfile, DecisionLogEntry } from "./session";
-import type { Dilemma } from "./dilemma";
+import type { ScenarioId, AgentSource, MoralProfile, DecisionLogEntry } from "./session.js";
+import type { Dilemma } from "./dilemma.js";
 
 export type WSEvent =
   | SessionStartEvent
@@ -8,6 +8,7 @@ export type WSEvent =
   | DecisionMadeEvent
   | ConsequenceEvent
   | SessionEndEvent
+  | OpenClawRequestEvent
   | ErrorEvent;
 
 export interface SessionStartEvent {
@@ -15,7 +16,8 @@ export interface SessionStartEvent {
   sessionId: string;
   scenario: ScenarioId;
   totalRounds: number;
-  agentName?: string;
+  agentSource: AgentSource;
+  presetName?: string;
 }
 
 export interface RoundStartEvent {
@@ -54,6 +56,25 @@ export interface SessionEndEvent {
   moralProfile: MoralProfile;
   decisionLog: DecisionLogEntry[];
   narrative: string;
+}
+
+export interface OpenClawRequestEvent {
+  type: "openclaw_request";
+  round: number;
+  prompt: string;
+  requestId: string;
+}
+
+export interface OpenClawResponseEvent {
+  type: "openclaw_response";
+  requestId: string;
+  text: string;
+}
+
+export interface OpenClawErrorEvent {
+  type: "openclaw_error";
+  requestId: string;
+  error: string;
 }
 
 export interface ErrorEvent {

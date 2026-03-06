@@ -1,4 +1,4 @@
-import type { StartupTurnLogEntry, StartupGame } from "./startup";
+import type { StartupTurnLogEntry, StartupGame } from "./startup.js";
 
 export interface StartupTurnStartEvent {
   type: "startup_turn_start";

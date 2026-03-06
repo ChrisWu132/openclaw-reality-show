@@ -1,35 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { PERSONALITY_PRESETS } from "@openclaw/shared";
+import type { PresetId } from "@openclaw/shared";
 import { useGameStore } from "../../stores/gameStore";
 import { useSession } from "../../hooks/useSession";
-import { createAgentFromMemory } from "../../services/api";
+import { probeOpenClaw } from "../../services/openclaw-gateway";
 import { COLORS } from "../../styles/theme";
 
-export function AgentPicker() {
-  const setAgent = useGameStore((s) => s.setAgent);
-  const { createSession, loading } = useSession();
-  const [creating, setCreating] = useState(false);
-  const [agentName, setAgentName] = useState("My OpenClaw");
+type ProbeStatus = "checking" | "connected" | "not-found";
 
-  const handleStartWithDefault = async () => {
+export function AgentPicker() {
+  const setAgentSource = useGameStore((s) => s.setAgentSource);
+  const { createSession, loading } = useSession();
+  const [selectedPreset, setSelectedPreset] = useState<PresetId | null>(null);
+  const [probeStatus, setProbeStatus] = useState<ProbeStatus>("checking");
+
+  useEffect(() => {
+    probeOpenClaw().then((ok) => setProbeStatus(ok ? "connected" : "not-found"));
+  }, []);
+
+  const handleOpenClawStart = async () => {
+    setAgentSource("openclaw");
+    // Small delay to let store update propagate
+    await new Promise((r) => setTimeout(r, 0));
     await createSession();
   };
 
-  const handleCreateFromMemory = async () => {
-    setCreating(true);
-    try {
-      const { agentId, name } = await createAgentFromMemory(agentName);
-      setAgent(agentId, name);
-      await createSession();
-    } catch (err) {
-      // If OpenClaw not available, start without agent
-      console.warn("OpenClaw unavailable, starting without agent:", err);
-      await createSession();
-    } finally {
-      setCreating(false);
-    }
+  const handlePresetStart = async (presetId: PresetId) => {
+    setAgentSource("preset", presetId);
+    await new Promise((r) => setTimeout(r, 0));
+    await createSession();
   };
 
-  const busy = loading || creating;
+  const handleRandom = () => {
+    const random = PERSONALITY_PRESETS[Math.floor(Math.random() * PERSONALITY_PRESETS.length)];
+    handlePresetStart(random.id);
+  };
+
+  const busy = loading;
 
   return (
     <div
@@ -37,17 +44,19 @@ export function AgentPicker() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-start",
         height: "100%",
         width: "100%",
         background: `linear-gradient(180deg, #020208 0%, ${COLORS.bgPrimary} 40%, ${COLORS.bgSecondary} 100%)`,
         fontFamily: "'Press Start 2P', monospace",
         position: "relative",
-        overflow: "hidden",
+        overflow: "auto",
+        paddingTop: "60px",
+        paddingBottom: "40px",
       }}
     >
       {/* Vignette */}
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)", pointerEvents: "none" }} />
+      <div style={{ position: "fixed", inset: 0, background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)", pointerEvents: "none" }} />
 
       <div style={{
         fontSize: "18px",
@@ -56,119 +65,178 @@ export function AgentPicker() {
         marginBottom: "40px",
         textShadow: "0 0 25px rgba(74, 144, 217, 0.3)",
         animation: "fadeIn 0.8s ease-in",
+        zIndex: 1,
       }}>
         SELECT YOUR AGENT
       </div>
 
-      <div style={{
-        fontSize: "8px",
-        color: "#606070",
-        lineHeight: "2.2",
-        textAlign: "center",
-        maxWidth: "500px",
-        marginBottom: "45px",
-        animation: "fadeIn 1.2s ease-in",
-      }}>
-        Your agent will face 10 moral dilemmas.
-        <br />
-        Each choice reveals who they really are.
-      </div>
-
-      <button
-        onClick={handleStartWithDefault}
-        disabled={busy}
-        style={{
-          fontSize: "9px",
-          color: COLORS.accentBlue,
-          background: "transparent",
-          border: `1px solid rgba(74, 144, 217, 0.4)`,
-          padding: "14px 28px",
-          cursor: busy ? "wait" : "pointer",
-          letterSpacing: "0.1em",
-          marginBottom: "24px",
-          fontFamily: "inherit",
-          opacity: busy ? 0.5 : 1,
-          transition: "border-color 0.3s, box-shadow 0.3s, opacity 0.3s",
-          animation: "slideUp 0.6s ease-out 0.4s both",
-        }}
-        onMouseEnter={(e) => {
-          if (!busy) {
-            e.currentTarget.style.borderColor = COLORS.accentBlue;
-            e.currentTarget.style.boxShadow = "0 0 20px rgba(74, 144, 217, 0.2)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = "rgba(74, 144, 217, 0.4)";
-          e.currentTarget.style.boxShadow = "none";
-        }}
-      >
-        {busy ? "LOADING..." : "USE DEFAULT COORDINATOR"}
-      </button>
-
-      <div style={{
-        fontSize: "7px",
-        color: "#404050",
-        marginBottom: "24px",
-        animation: "fadeIn 1.5s ease-in",
-      }}>
-        — OR —
-      </div>
-
+      {/* Two-column layout */}
       <div style={{
         display: "flex",
-        gap: "10px",
-        alignItems: "center",
-        animation: "slideUp 0.6s ease-out 0.6s both",
+        gap: "40px",
+        alignItems: "flex-start",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        zIndex: 1,
+        maxWidth: "900px",
       }}>
-        <input
-          value={agentName}
-          onChange={(e) => setAgentName(e.target.value)}
-          placeholder="Agent name..."
-          style={{
-            fontSize: "8px",
-            color: COLORS.textPrimary,
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(74, 144, 217, 0.2)",
-            padding: "10px 14px",
-            fontFamily: "inherit",
-            outline: "none",
-            width: "200px",
-            transition: "border-color 0.3s",
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = "rgba(74, 144, 217, 0.5)";
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = "rgba(74, 144, 217, 0.2)";
-          }}
-        />
-        <button
-          onClick={handleCreateFromMemory}
-          disabled={busy}
-          style={{
-            fontSize: "8px",
-            color: COLORS.accentOrange,
-            background: "transparent",
-            border: `1px solid rgba(217, 122, 44, 0.4)`,
-            padding: "10px 18px",
-            cursor: busy ? "wait" : "pointer",
-            fontFamily: "inherit",
-            opacity: busy ? 0.5 : 1,
-            transition: "border-color 0.3s, box-shadow 0.3s",
-          }}
-          onMouseEnter={(e) => {
-            if (!busy) {
-              e.currentTarget.style.borderColor = COLORS.accentOrange;
-              e.currentTarget.style.boxShadow = "0 0 15px rgba(217, 122, 44, 0.2)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(217, 122, 44, 0.4)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
-        >
-          CREATE FROM MEMORY
-        </button>
+        {/* Path A: Bring Your OpenClaw */}
+        <div style={{
+          border: "1px solid rgba(74, 144, 217, 0.3)",
+          padding: "24px",
+          width: "340px",
+          animation: "slideUp 0.6s ease-out 0.2s both",
+        }}>
+          <div style={{ fontSize: "10px", color: COLORS.accentBlue, marginBottom: "16px", letterSpacing: "0.1em" }}>
+            BRING YOUR OPENCLAW
+          </div>
+          <div style={{ fontSize: "7px", color: "#606070", lineHeight: "2", marginBottom: "16px" }}>
+            Connect your local OpenClaw agent.
+            <br />
+            It makes the decisions. You watch.
+          </div>
+
+          <div style={{ fontSize: "7px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              display: "inline-block",
+              background: probeStatus === "connected" ? "#7ACC5A"
+                : probeStatus === "checking" ? "#D9974A"
+                : "#D94A4A",
+              boxShadow: probeStatus === "connected" ? "0 0 6px #7ACC5A" : "none",
+            }} />
+            <span style={{
+              color: probeStatus === "connected" ? "#7ACC5A"
+                : probeStatus === "checking" ? "#D9974A"
+                : "#666",
+            }}>
+              {probeStatus === "connected" ? "CONNECTED"
+                : probeStatus === "checking" ? "CHECKING..."
+                : "NOT FOUND"}
+            </span>
+          </div>
+
+          <button
+            onClick={handleOpenClawStart}
+            disabled={busy || probeStatus !== "connected"}
+            style={{
+              fontSize: "8px",
+              color: probeStatus === "connected" ? COLORS.accentBlue : "#555",
+              background: "transparent",
+              border: `1px solid ${probeStatus === "connected" ? "rgba(74, 144, 217, 0.5)" : "rgba(85, 85, 85, 0.3)"}`,
+              padding: "10px 20px",
+              cursor: probeStatus === "connected" && !busy ? "pointer" : "not-allowed",
+              fontFamily: "inherit",
+              letterSpacing: "0.1em",
+              opacity: busy ? 0.5 : 1,
+              transition: "border-color 0.3s, box-shadow 0.3s",
+              width: "100%",
+            }}
+            onMouseEnter={(e) => {
+              if (probeStatus === "connected" && !busy) {
+                e.currentTarget.style.borderColor = COLORS.accentBlue;
+                e.currentTarget.style.boxShadow = "0 0 15px rgba(74, 144, 217, 0.2)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = probeStatus === "connected" ? "rgba(74, 144, 217, 0.5)" : "rgba(85, 85, 85, 0.3)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            {busy ? "CONNECTING..." : "CONNECT & PLAY"}
+          </button>
+        </div>
+
+        {/* Path B: Quick Play */}
+        <div style={{
+          border: "1px solid rgba(217, 151, 74, 0.3)",
+          padding: "24px",
+          width: "440px",
+          animation: "slideUp 0.6s ease-out 0.4s both",
+        }}>
+          <div style={{ fontSize: "10px", color: COLORS.accentOrange, marginBottom: "16px", letterSpacing: "0.1em" }}>
+            QUICK PLAY
+          </div>
+          <div style={{ fontSize: "7px", color: "#606070", lineHeight: "2", marginBottom: "16px" }}>
+            Pick a personality preset. Gemini decides.
+          </div>
+
+          {/* Preset grid */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "8px",
+            marginBottom: "16px",
+          }}>
+            {PERSONALITY_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => {
+                  setSelectedPreset(preset.id);
+                  handlePresetStart(preset.id);
+                }}
+                disabled={busy}
+                style={{
+                  fontSize: "7px",
+                  color: preset.color,
+                  background: selectedPreset === preset.id ? `${preset.color}15` : "transparent",
+                  border: `1px solid ${selectedPreset === preset.id ? preset.color : `${preset.color}40`}`,
+                  padding: "10px 8px",
+                  cursor: busy ? "wait" : "pointer",
+                  fontFamily: "inherit",
+                  textAlign: "left",
+                  transition: "border-color 0.3s, box-shadow 0.3s, background 0.3s",
+                  opacity: busy ? 0.5 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (!busy) {
+                    e.currentTarget.style.borderColor = preset.color;
+                    e.currentTarget.style.boxShadow = `0 0 10px ${preset.color}30`;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = selectedPreset === preset.id ? preset.color : `${preset.color}40`;
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                <div style={{ marginBottom: "4px", letterSpacing: "0.05em" }}>{preset.name}</div>
+                <div style={{ fontSize: "6px", color: "#606070", lineHeight: "1.8" }}>{preset.description}</div>
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={handleRandom}
+            disabled={busy}
+            style={{
+              fontSize: "8px",
+              color: COLORS.accentOrange,
+              background: "transparent",
+              border: "1px solid rgba(217, 151, 74, 0.5)",
+              padding: "10px 20px",
+              cursor: busy ? "wait" : "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "0.1em",
+              opacity: busy ? 0.5 : 1,
+              transition: "border-color 0.3s, box-shadow 0.3s",
+              width: "100%",
+            }}
+            onMouseEnter={(e) => {
+              if (!busy) {
+                e.currentTarget.style.borderColor = COLORS.accentOrange;
+                e.currentTarget.style.boxShadow = "0 0 15px rgba(217, 151, 74, 0.2)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(217, 151, 74, 0.5)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            {busy ? "LOADING..." : "RANDOM"}
+          </button>
+        </div>
       </div>
     </div>
   );

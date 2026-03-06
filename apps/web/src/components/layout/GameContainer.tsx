@@ -48,7 +48,7 @@ function AiDecidingIndicator() {
       }}
     >
       <div style={{ fontSize: "8px", color: COLORS.accentOrange, letterSpacing: "0.1em", marginBottom: "8px" }}>
-        AI DECIDING{dots}
+        {useGameStore.getState().agentSource === "openclaw" ? "YOUR OPENCLAW IS THINKING" : "AI DECIDING"}{dots}
       </div>
       <div style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', 'Courier New', monospace", color: "#505060", lineHeight: "1.6" }}>
         {THINK_LINES[thinkLine]}
@@ -75,7 +75,7 @@ function RoundTransition() {
       style={{
         position: "absolute",
         inset: 0,
-        background: COLORS.bgPrimary,
+        background: `radial-gradient(ellipse at center, ${tierColor}08 0%, ${COLORS.bgPrimary} 70%)`,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -86,14 +86,20 @@ function RoundTransition() {
       }}
     >
       <div style={{
-        fontSize: "16px",
-        color: COLORS.textSecondary,
-        letterSpacing: "0.25em",
-        textShadow: `0 0 30px ${tierColor}44`,
+        fontSize: "24px",
+        color: "#ffffff",
+        letterSpacing: "0.3em",
+        textShadow: `0 0 40px ${tierColor}88, 0 0 80px ${tierColor}44`,
       }}>
         ROUND {currentRound}
       </div>
-      <div style={{ fontSize: "7px", color: tierColor, marginTop: "12px", letterSpacing: "0.15em", opacity: 0.7 }}>
+      <div style={{
+        width: "60px",
+        height: "2px",
+        background: `linear-gradient(90deg, transparent, ${tierColor}, transparent)`,
+        margin: "16px 0",
+      }} />
+      <div style={{ fontSize: "8px", color: tierColor, letterSpacing: "0.15em" }}>
         {tierLabel}
       </div>
     </div>
@@ -106,17 +112,17 @@ function ClickPrompt({ label }: { label: string }) {
     <div
       style={{
         position: "absolute",
-        top: "50%",
+        bottom: "20%",
         left: "50%",
-        transform: "translate(-50%, -50%)",
+        transform: "translateX(-50%)",
         fontFamily: "'Press Start 2P', monospace",
         fontSize: "10px",
-        color: "rgba(255,255,255,0.6)",
+        color: "rgba(255,255,255,0.7)",
         letterSpacing: "0.15em",
         animation: "pulse 2s infinite",
         zIndex: 30,
         pointerEvents: "none",
-        textShadow: "0 0 10px rgba(255,255,255,0.1)",
+        textShadow: "0 0 15px rgba(255,255,255,0.2)",
         background: "rgba(0, 0, 0, 0.4)",
         padding: "12px 24px",
         borderRadius: "2px",

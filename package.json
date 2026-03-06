@@ -6,10 +6,9 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:openclaw\" \"npm run dev:server\" \"npm run dev:web\"",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\"",
     "dev:web": "npm run dev -w apps/web",
     "dev:server": "npm run dev -w apps/server",
-    "dev:openclaw": "npm run dev -w apps/openclaw",
     "build": "npm run build -w packages/shared && npm run build -w apps/server && npm run build -w apps/web",
     "test": "npm test -w packages/shared && npm test -w apps/server && npm test -w apps/web",
     "typecheck": "tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p apps/server/tsconfig.json",
@@ -18,6 +17,7 @@
   "devDependencies": {
     "concurrently": "^9.0.0",
     "eslint": "^9.0.0",
+    "eventsource": "^4.1.0",
     "playwright": "^1.58.2",
     "prettier": "^3.3.0",
     "puppeteer": "^24.37.5",

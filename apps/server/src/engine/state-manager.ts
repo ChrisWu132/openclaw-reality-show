@@ -1,4 +1,4 @@
-import type { Session, DecisionLogEntry, MoralDimension } from "@openclaw/shared";
+import type { Session, AgentSource, PresetId, DecisionLogEntry, MoralDimension } from "@openclaw/shared";
 import type { Dilemma } from "@openclaw/shared";
 import type { TrolleyDecision } from "@openclaw/shared";
 import { createInitialSession } from "../data/initial-state.js";
@@ -8,10 +8,10 @@ const logger = createLogger("state-manager");
 
 export const sessions = new Map<string, Session>();
 
-export function createSession(systemPrompt: string, agentId?: string, agentMemory?: string): Session {
-  const session = createInitialSession(systemPrompt, agentId, agentMemory);
+export function createSession(agentSource: AgentSource, presetId?: PresetId): Session {
+  const session = createInitialSession(agentSource, presetId);
   sessions.set(session.id, session);
-  logger.info("Session created", { sessionId: session.id });
+  logger.info("Session created", { sessionId: session.id, agentSource, presetId });
   return session;
 }
 

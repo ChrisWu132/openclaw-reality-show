@@ -1,16 +1,18 @@
+import crypto from "node:crypto";
 import type { Dilemma, Session } from "@openclaw/shared";
-import { TOTAL_ROUNDS } from "@openclaw/shared";
+import { TOTAL_ROUNDS, PERSONALITY_PRESETS } from "@openclaw/shared";
 import { getSession, applyDecision } from "./state-manager.js";
 import { selectDilemma } from "./dilemma-selector.js";
-import { getSessionWs } from "../ws/ws-server.js";
-import { emitEvent } from "../ws/ws-emitter.js";
+import { emitSessionEvent, endSessionSSE } from "../sse/sse-connections.js";
+import { waitForOpenClawResponse } from "../sse/openclaw-resolver.js";
 import { getTrolleyDecision, generateProfileNarrative, initSystemPrompt } from "../ai/llm-client.js";
+import { buildOpenClawDilemmaPrompt } from "../ai/prompt-builder.js";
+import { parseTrolleyDecision } from "../ai/response-parser.js";
 import { createLogger } from "../utils/logger.js";
 import { delay } from "../utils/delay.js";
 
 const logger = createLogger("scene-engine");
 
-/** Tracks sessions that have been cancelled (e.g. client disconnected). */
 const cancelledSessions = new Set<string>();
 
 export function cancelSession(sessionId: string): void {
@@ -25,20 +27,24 @@ export async function runSession(sessionId: string): Promise<void> {
   const session = getSession(sessionId);
   if (!session) throw new Error(`Session not found: ${sessionId}`);
 
-  const ws = getSessionWs(sessionId);
-  if (!ws) throw new Error(`No WebSocket for session: ${sessionId}`);
-
-  // Initialize system prompt
-  const systemPrompt = await initSystemPrompt(session.agentId);
-  session.systemPrompt = systemPrompt;
+  // Initialize system prompt (only used for preset sessions)
+  if (session.agentSource === "preset") {
+    const systemPrompt = initSystemPrompt(session.presetId);
+    session.systemPrompt = systemPrompt;
+  }
   session.status = "running";
 
-  // Emit session_start
-  emitEvent(ws, {
+  const presetName = session.agentSource === "preset"
+    ? PERSONALITY_PRESETS.find((p) => p.id === session.presetId)?.name
+    : undefined;
+
+  emitSessionEvent(sessionId, {
     type: "session_start",
     sessionId: session.id,
     scenario: session.scenario,
     totalRounds: TOTAL_ROUNDS,
+    agentSource: session.agentSource,
+    presetName,
   });
 
   const usedIds = new Set<string>();
@@ -53,17 +59,14 @@ export async function runSession(sessionId: string): Promise<void> {
 
     session.currentRound = round;
 
-    // 1. Emit round_start
-    emitEvent(ws, { type: "round_start", round, totalRounds: TOTAL_ROUNDS });
+    emitSessionEvent(sessionId, { type: "round_start", round, totalRounds: TOTAL_ROUNDS });
     await delay(800);
 
-    // 2. Select dilemma
     const dilemma: Dilemma = selectDilemma(round, usedIds);
     usedIds.add(dilemma.id);
 
-    // 3. Emit dilemma_reveal
-    emitEvent(ws, { type: "dilemma_reveal", round, dilemma });
-    await delay(2000); // Brief pause before AI decides
+    emitSessionEvent(sessionId, { type: "dilemma_reveal", round, dilemma });
+    await delay(2000);
 
     if (isSessionCancelled(sessionId)) {
       logger.info("Session cancelled before AI call", { sessionId, round });
@@ -72,24 +75,25 @@ export async function runSession(sessionId: string): Promise<void> {
       return;
     }
 
-    // 4. Call AI for TrolleyDecision
     let decision;
     try {
-      decision = await getTrolleyDecision(session, dilemma);
+      if (session.agentSource === "openclaw") {
+        decision = await getOpenClawDecision(session, dilemma, sessionId);
+      } else {
+        decision = await getTrolleyDecision(session, dilemma);
+      }
     } catch (error) {
       logger.error(`AI call failed for round ${round}`, { error: (error as Error).message });
-      emitEvent(ws, { type: "error", message: "AI decision failed. Session ending.", code: "AI_CALL_FAILED" });
+      emitSessionEvent(sessionId, { type: "error", message: "AI decision failed. Session ending.", code: "AI_CALL_FAILED" });
       session.status = "ended";
       return;
     }
 
-    // 5. Apply decision to moral profile
     applyDecision(session, decision, dilemma);
 
     const choice = dilemma.choices.find((c) => c.id === decision.choiceId)!;
 
-    // 6. Emit decision_made
-    emitEvent(ws, {
+    emitSessionEvent(sessionId, {
       type: "decision_made",
       round,
       choiceId: decision.choiceId,
@@ -100,8 +104,7 @@ export async function runSession(sessionId: string): Promise<void> {
     });
     await delay(1500);
 
-    // 7. Emit consequence
-    emitEvent(ws, {
+    emitSessionEvent(sessionId, {
       type: "consequence",
       round,
       casualties: choice.casualties,
@@ -112,7 +115,6 @@ export async function runSession(sessionId: string): Promise<void> {
     await delay(1500);
   }
 
-  // Generate moral profile narrative via AI
   let narrative = "";
   try {
     narrative = await generateProfileNarrative(session);
@@ -121,8 +123,7 @@ export async function runSession(sessionId: string): Promise<void> {
     narrative = "The agent's moral profile defies simple categorization.";
   }
 
-  // Emit session_end
-  emitEvent(ws, {
+  emitSessionEvent(sessionId, {
     type: "session_end",
     moralProfile: session.moralProfile,
     decisionLog: session.decisionLog,
@@ -130,37 +131,54 @@ export async function runSession(sessionId: string): Promise<void> {
   });
 
   session.status = "ended";
-
-  // Post outcome to OpenClaw (fire-and-forget)
-  postToOpenClaw(session, narrative).catch((err) => {
-    logger.warn("Failed to post to OpenClaw", { error: (err as Error).message });
-  });
-
+  endSessionSSE(sessionId);
   logger.info("Session completed", { sessionId, rounds: TOTAL_ROUNDS });
 }
 
-async function postToOpenClaw(session: Session, narrative: string): Promise<void> {
-  if (!session.agentId) return;
+async function getOpenClawDecision(session: Session, dilemma: Dilemma, sessionId: string) {
+  const prompt = buildOpenClawDilemmaPrompt(session, dilemma);
+  const requestId = crypto.randomUUID();
 
-  const apiUrl = process.env.OPENCLAW_API_URL;
-  const apiKey = process.env.OPENCLAW_API_KEY;
-  if (!apiUrl) return;
+  emitSessionEvent(sessionId, { type: "openclaw_request", round: dilemma.round, prompt, requestId });
 
-  const incidentLog = session.decisionLog
-    .map((d) => `Round ${d.round} — ${d.dilemmaTitle}: Chose "${d.choiceLabel}" (${d.casualties} casualties). Reasoning: ${d.reasoning}`)
-    .join("\n");
+  try {
+    const responseText = await waitForOpenClawResponse(sessionId, requestId, 60_000);
+    const result = parseTrolleyDecision(responseText, dilemma);
 
-  await fetch(`${apiUrl}/agents/${session.agentId}/sessions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-    },
-    body: JSON.stringify({
-      scenario: "trolley-problem",
-      outcome: session.moralProfile.dominantFramework || "mixed",
-      incidentLog,
-      narrative,
-    }),
-  });
+    if (result.success) {
+      return result.decision!;
+    }
+
+    // Retry once with correction prompt
+    logger.warn("OpenClaw response unparseable, retrying with correction", { error: result.error });
+    const correctionPrompt = prompt + `\n\n---\n\nCORRECTION: Your previous response could not be parsed. Error: ${result.error}\nPlease respond with ONLY a valid JSON object.`;
+    const retryRequestId = crypto.randomUUID();
+    emitSessionEvent(sessionId, { type: "openclaw_request", round: dilemma.round, prompt: correctionPrompt, requestId: retryRequestId });
+
+    const retryText = await waitForOpenClawResponse(sessionId, retryRequestId, 60_000);
+    const retryResult = parseTrolleyDecision(retryText, dilemma);
+
+    if (retryResult.success) {
+      return retryResult.decision!;
+    }
+
+    // Fallback
+    logger.warn("OpenClaw retry failed, using fallback choice");
+    return {
+      choiceId: dilemma.choices[0].id,
+      speaker: "coordinator" as const,
+      reasoning: "The OpenClaw agent's response could not be interpreted. Defaulting to the first available choice.",
+      confidence: 0,
+    };
+  } catch (err) {
+    // Timeout or relay error — fall back to Gemini
+    logger.warn("OpenClaw relay failed, falling back to Gemini", { error: (err as Error).message });
+
+    emitSessionEvent(sessionId, { type: "error", message: "OpenClaw unavailable — using Gemini fallback for this round.", code: "OPENCLAW_FALLBACK" });
+
+    // Build a system prompt on-the-fly for fallback
+    const fallbackSystemPrompt = initSystemPrompt();
+    session.systemPrompt = fallbackSystemPrompt;
+    return getTrolleyDecision(session, dilemma);
+  }
 }

@@ -1,8 +1,8 @@
 /**
- * End-to-end test: create session, connect WebSocket, verify all 10 rounds flow through.
+ * End-to-end test: create session, connect SSE, verify all 10 rounds flow through.
  * Run: node test-e2e.mjs
  */
-import WebSocket from "ws";
+import { EventSource } from "eventsource";
 
 const API = "http://localhost:3001";
 const TIMEOUT_MS = 300_000; // 5 min total timeout
@@ -20,7 +20,7 @@ async function main() {
   const createRes = await fetch(`${API}/api/session/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ scenario: "trolley-problem" }),
+    body: JSON.stringify({ scenario: "trolley-problem", agentSource: "preset", presetId: "utilitarian" }),
   });
 
   if (!createRes.ok) {
@@ -31,18 +31,21 @@ async function main() {
 
   const session = await createRes.json();
   console.log("    Session ID:", session.sessionId);
-  console.log("    WS URL:", session.wsUrl);
+  console.log("    SSE URL:", session.sseUrl);
   console.log("    Total Rounds:", session.totalRounds);
 
-  if (!session.wsUrl) {
-    console.error("    FAIL: no wsUrl in response");
+  if (!session.sseUrl) {
+    console.error("    FAIL: no sseUrl in response");
     process.exit(1);
   }
 
-  // 3. Connect WebSocket
-  console.log("\n[3] Connecting WebSocket...");
+  // 3. Connect SSE
+  console.log("\n[3] Connecting SSE...");
   const events = [];
   let sessionEnded = false;
+
+  // Build absolute SSE URL
+  const sseUrl = session.sseUrl.startsWith("http") ? session.sseUrl : `${API}${session.sseUrl}`;
 
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -52,53 +55,56 @@ async function main() {
       reject(new Error("timeout"));
     }, TIMEOUT_MS);
 
-    const ws = new WebSocket(session.wsUrl);
+    const es = new EventSource(sseUrl);
 
-    ws.on("open", () => {
-      console.log("    WebSocket connected");
-    });
+    const EVENT_TYPES = [
+      "session_start",
+      "round_start",
+      "dilemma_reveal",
+      "decision_made",
+      "consequence",
+      "session_end",
+      "error",
+    ];
 
-    ws.on("message", (data) => {
-      const event = JSON.parse(data.toString());
-      events.push(event);
+    for (const eventType of EVENT_TYPES) {
+      es.addEventListener(eventType, (e) => {
+        const event = JSON.parse(e.data);
+        events.push(event);
 
-      const round = event.round ?? "";
-      const extra =
-        event.type === "decision_made" ? ` → ${event.choiceLabel} (${event.trackDirection})` :
-        event.type === "consequence" ? ` → ${event.casualties} dead` :
-        event.type === "dilemma_reveal" ? ` → ${event.dilemma?.title}` :
-        event.type === "session_end" ? ` → dominant: ${event.moralProfile?.dominantFramework}` :
-        event.type === "error" ? ` → ${event.message}` :
-        "";
+        const round = event.round ?? "";
+        const extra =
+          event.type === "decision_made" ? ` → ${event.choiceLabel} (${event.trackDirection})` :
+          event.type === "consequence" ? ` → ${event.casualties} dead` :
+          event.type === "dilemma_reveal" ? ` → ${event.dilemma?.title}` :
+          event.type === "session_end" ? ` → dominant: ${event.moralProfile?.dominantFramework}` :
+          event.type === "error" ? ` → ${event.message}` :
+          "";
 
-      console.log(`    [event] ${event.type} ${round ? `R${round}` : ""}${extra}`);
+        console.log(`    [event] ${event.type} ${round ? `R${round}` : ""}${extra}`);
 
-      if (event.type === "session_end") {
-        sessionEnded = true;
-        clearTimeout(timer);
-        ws.close();
-        resolve(undefined);
-      }
+        if (event.type === "session_end") {
+          sessionEnded = true;
+          clearTimeout(timer);
+          es.close();
+          resolve(undefined);
+        }
 
-      if (event.type === "error") {
-        clearTimeout(timer);
-        ws.close();
-        reject(new Error(`Server error: ${event.message}`));
-      }
-    });
+        if (event.type === "error") {
+          clearTimeout(timer);
+          es.close();
+          reject(new Error(`Server error: ${event.message}`));
+        }
+      });
+    }
 
-    ws.on("error", (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-
-    ws.on("close", (code) => {
+    es.onerror = (err) => {
       if (!sessionEnded) {
-        console.log("    WebSocket closed with code:", code);
         clearTimeout(timer);
-        resolve(undefined);
+        es.close();
+        reject(new Error("SSE connection error"));
       }
-    });
+    };
   });
 
   // 4. Verify events

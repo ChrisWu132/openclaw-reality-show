@@ -1,0 +1,126 @@
+import type { Response } from "express";
+import type { WSEvent, StartupWSEvent } from "@openclaw/shared";
+import { createLogger } from "../utils/logger.js";
+
+const logger = createLogger("sse");
+
+// -- Trolley session connections (1:1) --
+const sessionConnections = new Map<string, Response>();
+
+// -- Startup game connections (1:N) --
+const startupConnections = new Map<string, Set<Response>>();
+
+// -- Heartbeat --
+const HEARTBEAT_INTERVAL = 15_000;
+const heartbeatTimers = new Map<Response, ReturnType<typeof setInterval>>();
+
+function startHeartbeat(res: Response): void {
+  const timer = setInterval(() => {
+    try {
+      res.write(":heartbeat\n\n");
+    } catch {
+      clearInterval(timer);
+      heartbeatTimers.delete(res);
+    }
+  }, HEARTBEAT_INTERVAL);
+  heartbeatTimers.set(res, timer);
+}
+
+function stopHeartbeat(res: Response): void {
+  const timer = heartbeatTimers.get(res);
+  if (timer) {
+    clearInterval(timer);
+    heartbeatTimers.delete(res);
+  }
+}
+
+// -- Trolley session --
+
+export function getSessionSSE(sessionId: string): Response | undefined {
+  return sessionConnections.get(sessionId);
+}
+
+export function hasSessionSSE(sessionId: string): boolean {
+  return sessionConnections.has(sessionId);
+}
+
+export function setSessionSSE(sessionId: string, res: Response): void {
+  sessionConnections.set(sessionId, res);
+  startHeartbeat(res);
+  logger.info(`SSE connected for session ${sessionId}`);
+}
+
+export function removeSessionSSE(sessionId: string): void {
+  const res = sessionConnections.get(sessionId);
+  if (res) {
+    stopHeartbeat(res);
+    sessionConnections.delete(sessionId);
+    logger.info(`SSE disconnected for session ${sessionId}`);
+  }
+}
+
+export function emitSessionEvent(sessionId: string, event: WSEvent): void {
+  const res = sessionConnections.get(sessionId);
+  if (!res) return;
+  try {
+    res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+    logger.debug(`Emitted: ${event.type}`, { type: event.type });
+  } catch {
+    removeSessionSSE(sessionId);
+  }
+}
+
+export function endSessionSSE(sessionId: string): void {
+  const res = sessionConnections.get(sessionId);
+  if (res) {
+    try { res.end(); } catch { /* already closed */ }
+    removeSessionSSE(sessionId);
+  }
+}
+
+// -- Startup game --
+
+export function addStartupSSE(gameId: string, res: Response): void {
+  if (!startupConnections.has(gameId)) {
+    startupConnections.set(gameId, new Set());
+  }
+  startupConnections.get(gameId)!.add(res);
+  startHeartbeat(res);
+  logger.info(`Startup SSE spectator connected for game ${gameId}`);
+}
+
+export function removeStartupSSE(gameId: string, res: Response): void {
+  const clients = startupConnections.get(gameId);
+  if (clients) {
+    stopHeartbeat(res);
+    clients.delete(res);
+    if (clients.size === 0) startupConnections.delete(gameId);
+  }
+}
+
+export function broadcastStartupEvent(gameId: string, event: StartupWSEvent): void {
+  const clients = startupConnections.get(gameId);
+  if (!clients) return;
+  const data = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+  const dead: Response[] = [];
+  for (const res of clients) {
+    try {
+      res.write(data);
+    } catch {
+      dead.push(res);
+    }
+  }
+  for (const res of dead) {
+    removeStartupSSE(gameId, res);
+  }
+}
+
+export function endAllStartupSSE(gameId: string): void {
+  const clients = startupConnections.get(gameId);
+  if (!clients) return;
+  for (const res of clients) {
+    stopHeartbeat(res);
+    try { res.end(); } catch { /* already closed */ }
+  }
+  startupConnections.delete(gameId);
+}

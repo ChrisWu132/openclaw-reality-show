@@ -32,16 +32,16 @@ export function useStartupPolling(gameId: string | null): void {
     poll();
     timerRef.current = setInterval(poll, POLL_INTERVAL);
 
-    // WebSocket for instant updates
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${protocol}://${window.location.host}/startup/${gameId}`;
-    let ws: WebSocket | null = null;
+    // SSE for instant updates
+    const sseUrl = `/api/startup/games/${gameId}/events`;
+    let es: EventSource | null = null;
 
     try {
-      ws = new WebSocket(wsUrl);
-      ws.onmessage = (msg) => {
+      es = new EventSource(sseUrl);
+
+      const handleEvent = (e: MessageEvent) => {
         try {
-          const event = JSON.parse(msg.data);
+          const event = JSON.parse(e.data);
           if (event.game) {
             setActiveGame(event.game);
           }
@@ -53,14 +53,18 @@ export function useStartupPolling(gameId: string | null): void {
           // ignore parse errors
         }
       };
+
+      es.addEventListener("startup_turn_start", handleEvent);
+      es.addEventListener("startup_turn_complete", handleEvent);
+      es.addEventListener("startup_game_over", handleEvent);
     } catch {
-      // WS failure is fine — polling is primary
+      // SSE failure is fine — polling is primary
     }
 
     return () => {
       cancelled = true;
       if (timerRef.current) clearInterval(timerRef.current);
-      ws?.close();
+      es?.close();
     };
   }, [gameId, setActiveGame, setPhase, setError]);
 }

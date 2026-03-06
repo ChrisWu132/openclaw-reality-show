@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Dilemma, MoralProfile, DecisionLogEntry } from "@openclaw/shared";
+import type { Dilemma, MoralProfile, DecisionLogEntry, AgentSource, PresetId } from "@openclaw/shared";
 
 export type GameMode = "trolley" | "startup" | null;
 export type GamePhase = "intro" | "mode-select" | "agent-select" | "connecting" | "playing" | "profile" | "startup";
@@ -10,9 +10,10 @@ interface GameState {
   gameMode: GameMode;
   phase: GamePhase;
   sessionId: string | null;
-  wsUrl: string | null;
-  agentId: string | null;
-  agentName: string | null;
+  sseUrl: string | null;
+  agentSource: AgentSource | null;
+  presetId: PresetId | null;
+  presetName: string | null;
 
   currentRound: number;
   totalRounds: number;
@@ -40,39 +41,40 @@ interface GameState {
 
   error: string | null;
 
-  // Consequence sub-phase for animation timing
   consequenceSubPhase: ConsequenceSubPhase;
 
-  // Event queue for click-to-advance
   pendingEvents: any[];
   waitingForClick: boolean;
 
-  // Dilemma staggered reveal
   dilemmaFullyRevealed: boolean;
 
   // Actions
   setGameMode: (mode: GameMode) => void;
   setPhase: (phase: GamePhase) => void;
-  setWsUrl: (url: string) => void;
-  setAgent: (agentId: string, agentName: string) => void;
+  setSseUrl: (url: string) => void;
+  setAgentSource: (source: AgentSource, presetId?: PresetId) => void;
   setScenePhase: (phase: ScenePhase) => void;
   setConsequenceSubPhase: (subPhase: ConsequenceSubPhase) => void;
   setError: (error: string | null) => void;
   reset: () => void;
 
-  // Event queue actions
   enqueueEvent: (event: any) => void;
   advanceClick: () => void;
   setDilemmaFullyRevealed: (v: boolean) => void;
 }
 
-// Which event types pause for a click after being processed
 const PAUSE_EVENTS = new Set(["round_start", "dilemma_reveal", "decision_made", "consequence"]);
 
 function processEvent(event: any, set: (partial: Partial<GameState>) => void) {
   switch (event.type) {
     case "session_start":
-      set({ phase: "playing", sessionId: event.sessionId, totalRounds: event.totalRounds, scenePhase: "idle" });
+      set({
+        phase: "playing",
+        sessionId: event.sessionId,
+        totalRounds: event.totalRounds,
+        scenePhase: "idle",
+        presetName: event.presetName || null,
+      });
       break;
     case "round_start":
       set({
@@ -131,7 +133,6 @@ function tryProcessNext(state: GameState, set: (partial: Partial<GameState>) => 
   if (PAUSE_EVENTS.has(next.type)) {
     set({ waitingForClick: true });
   } else {
-    // Auto-processed; check if more events can be consumed
     const updated = useGameStore.getState();
     if (!updated.waitingForClick && updated.pendingEvents.length > 0) {
       tryProcessNext(updated, set);
@@ -143,9 +144,10 @@ const initialState = {
   gameMode: null as GameMode,
   phase: "intro" as GamePhase,
   sessionId: null as string | null,
-  wsUrl: null as string | null,
-  agentId: null as string | null,
-  agentName: null as string | null,
+  sseUrl: null as string | null,
+  agentSource: null as AgentSource | null,
+  presetId: null as PresetId | null,
+  presetName: null as string | null,
   currentRound: 0,
   totalRounds: 10,
   scenePhase: "idle" as ScenePhase,
@@ -167,8 +169,8 @@ export const useGameStore = create<GameState>((set) => ({
 
   setGameMode: (gameMode) => set({ gameMode }),
   setPhase: (phase) => set({ phase }),
-  setWsUrl: (url) => set({ wsUrl: url }),
-  setAgent: (agentId, agentName) => set({ agentId, agentName }),
+  setSseUrl: (url) => set({ sseUrl: url }),
+  setAgentSource: (agentSource, presetId) => set({ agentSource, presetId: presetId ?? null }),
   setScenePhase: (scenePhase) => set({ scenePhase, consequenceSubPhase: scenePhase === "consequence" ? "traveling" : null }),
   setConsequenceSubPhase: (consequenceSubPhase) => set({ consequenceSubPhase }),
   setError: (error) => set({ error }),
@@ -181,7 +183,6 @@ export const useGameStore = create<GameState>((set) => ({
     const updated = { pendingEvents: [...state.pendingEvents, event] };
     set(updated);
 
-    // If not waiting for click, try to process immediately
     if (!state.waitingForClick) {
       const next = useGameStore.getState();
       tryProcessNext(next, set);
@@ -191,14 +192,12 @@ export const useGameStore = create<GameState>((set) => ({
   advanceClick: () => {
     const state = useGameStore.getState();
 
-    // Special case: clicking past dilemma → show "deciding" while waiting for AI
     if (state.scenePhase === "dilemma") {
       set({ waitingForClick: false, scenePhase: "deciding" });
     } else {
       set({ waitingForClick: false });
     }
 
-    // Try to process next queued event
     const next = useGameStore.getState();
     tryProcessNext(next, set);
   },

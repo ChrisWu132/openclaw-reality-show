@@ -13,8 +13,7 @@ A 3D Trolley Problem game where an AI agent (the Coordinator) faces 10 increasin
 /docs/WORLD_BIBLE.md       — In-universe rules (fed as system prompt)
 /personalities/            — Character personality files
   coordinator-default.md   — Default Coordinator personality
-  openclaw.md              — OpenClaw platform personality
-/apps/openclaw/            — OpenClaw agent evolution service (port 3002)
+  presets/*.md             — 6 personality presets (utilitarian, empath, deontologist, philosopher, rebel, survivor)
 /apps/server/              — Express + WebSocket game server (port 3001)
 /apps/web/                 — React + Three.js frontend (port 5173)
 /packages/shared/          — Shared types and constants
@@ -68,14 +67,14 @@ Different agents make different decisions. After each session, the decision log 
 ### When Writing Code
 - Use Google Gemini (`gemini-2.5-flash` default, configurable via `GOOGLE_MODEL`) for LLM calls
 - TrolleyDecision must include a valid choiceId from the current dilemma
-- WebSocket events: session_start, round_start, dilemma_reveal, decision_made, consequence, session_end, error
-- Session lifecycle: 10 rounds → AI decides each → moral profile generated → posted to OpenClaw
+- SSE events: session_start, round_start, dilemma_reveal, decision_made, consequence, session_end, openclaw_request, error
+- Session lifecycle: 10 rounds → AI decides each → moral profile generated
+- Two agent paths: "preset" (Gemini with personality preset) or "openclaw" (browser relay to local OpenClaw agent)
 - 3D scene uses React Three Fiber (R3F) with @react-three/drei helpers
 - The `reasoning` field is displayed as an inner monologue panel after each decision
 
 ### What NOT to Do
 - Do not modify `docs/WORLD_BIBLE.md` unless explicitly told
-- Do not modify `apps/openclaw/` unless explicitly told
 - Do not give spectators any control — observation only
 - Do not hardcode Coordinator decisions — the AI generates them each run
 - Do not modify `.bmad-core/`
@@ -85,6 +84,17 @@ Different agents make different decisions. After each session, the decision log 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-05: [infrastructure] WebSocket → SSE + REST refactor
+  - Replaced bidirectional WebSocket with SSE (server push) + POST (OpenClaw relay only)
+  - New: apps/server/src/sse/sse-connections.ts, apps/server/src/sse/openclaw-resolver.ts, apps/web/src/hooks/useSSE.ts
+  - Deleted: apps/server/src/ws/ (ws-server.ts, ws-emitter.ts), apps/web/src/hooks/useWebSocket.ts
+  - Modified: session.ts routes (SSE endpoint + openclaw POST), startup.ts routes (SSE endpoint), scene-engine.ts, index.ts, App.tsx, gameStore.ts, useSession.ts, useStartupPolling.ts, api.ts, vite.config.ts
+  - Removed dependencies: ws, @types/ws
+  - Breaking changes: wsUrl → sseUrl in API response and store
+- 2026-03-05: [infrastructure] Agent selection rework — deleted apps/openclaw/, added browser relay for real OpenClaw agents, added Quick Play with 6 personality presets
+  - Deleted: apps/openclaw/, apps/server/src/routes/agent.ts
+  - New: packages/shared/src/constants/presets.ts, personalities/presets/*.md (6 files), apps/web/src/services/openclaw-gateway.ts
+  - Modified: session.ts types (agentSource/presetId), ws-events (openclaw_request/response/error), session route, state-manager, initial-state, personality-loader, llm-client, prompt-builder, scene-engine, ws-server, index.ts, AgentPicker, gameStore, api.ts, useSession, useWebSocket, GameContainer, startup routes
 - 2026-03-05: [frontend] AI Startup Arena visual audit fixes
   - Fixed intro subtitle, 30s LLM timeout, ecosystem map sizing/labels/icons, cash bar scale, resource bar height, valuation empty state, turn log readability, "AI DECIDING" indicator
   - Files modified: IntroScreen.tsx, google-provider.ts, EcosystemMap.tsx, AgentCard.tsx, ValuationChart.tsx, TurnLog.tsx, MarketEventBanner.tsx, StartupGameView.tsx
