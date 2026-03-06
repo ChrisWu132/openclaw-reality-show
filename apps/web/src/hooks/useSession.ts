@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { createSession as createSessionApi } from "../services/api";
+import { createSession as createSessionApi, authorizeDelegation } from "../services/api";
 import { useGameStore } from "../stores/gameStore";
 
 export function useSession() {
@@ -13,7 +13,18 @@ export function useSession() {
     setLoading(true);
     setError(null);
     try {
-      const { sseUrl } = await createSessionApi(agentSource, presetId || undefined);
+      const { sessionId, sseUrl } = await createSessionApi(agentSource, presetId || undefined);
+
+      // For OpenClaw mode, get a delegation token for the relay POST
+      if (agentSource === "openclaw") {
+        try {
+          const delegationToken = await authorizeDelegation(sessionId);
+          useGameStore.getState().setDelegationToken(delegationToken);
+        } catch {
+          // Non-fatal — delegation may not be required (AUTH_REQUIRED=false)
+        }
+      }
+
       useGameStore.getState().setSseUrl(sseUrl);
       useGameStore.getState().setPhase("connecting");
     } catch (err) {

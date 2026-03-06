@@ -4,8 +4,10 @@ dotenv.config({ path: path.resolve(import.meta.dirname, "../../../.env") });
 import express from "express";
 import { loadAllPersonalities } from "./loaders/personality-loader.js";
 import { initLLMClient } from "./ai/llm-client.js";
+import { initDatabase } from "./db/database.js";
 import { sessionRouter } from "./routes/session.js";
 import { startupRouter } from "./routes/startup.js";
+import { authRouter } from "./routes/auth.js";
 import { endSessionSSE } from "./sse/sse-connections.js";
 import { createLogger } from "./utils/logger.js";
 import { sessions } from "./engine/state-manager.js";
@@ -14,6 +16,16 @@ const logger = createLogger("server");
 const PORT = process.env.PORT || 3001;
 
 async function startServer(): Promise<void> {
+  // Initialize database
+  logger.info("Initializing database...");
+  initDatabase();
+
+  // Check JWT_SECRET when auth is required
+  if (process.env.AUTH_REQUIRED === "true" && !process.env.JWT_SECRET) {
+    logger.error("JWT_SECRET is required when AUTH_REQUIRED=true. Set it in .env");
+    process.exit(1);
+  }
+
   logger.info("Loading personality files...");
   await loadAllPersonalities();
 
@@ -27,6 +39,7 @@ async function startServer(): Promise<void> {
 
   app.use(express.json());
 
+  app.use("/api", authRouter);
   app.use("/api", sessionRouter);
   app.use("/api", startupRouter);
 
@@ -48,6 +61,7 @@ async function startServer(): Promise<void> {
 
   app.listen(PORT, () => {
     logger.info(`OpenClaw Trolley Problem server running on port ${PORT}`);
+    logger.info(`Auth mode: ${process.env.AUTH_REQUIRED === "true" ? "REQUIRED" : "OPTIONAL (legacy)"}`);
   });
 }
 

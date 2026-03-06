@@ -8,10 +8,10 @@ const logger = createLogger("state-manager");
 
 export const sessions = new Map<string, Session>();
 
-export function createSession(agentSource: AgentSource, presetId?: PresetId): Session {
-  const session = createInitialSession(agentSource, presetId);
+export function createSession(agentSource: AgentSource, presetId?: PresetId, userId: string = "anonymous"): Session {
+  const session = createInitialSession(agentSource, presetId, userId);
   sessions.set(session.id, session);
-  logger.info("Session created", { sessionId: session.id, agentSource, presetId });
+  logger.info("Session created", { sessionId: session.id, agentSource, presetId, userId });
   return session;
 }
 

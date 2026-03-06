@@ -17,7 +17,7 @@ function createEmptyMoralProfile(): MoralProfile {
   return { scores, totalSaved: 0, totalSacrificed: 0 };
 }
 
-export function createInitialSession(agentSource: AgentSource, presetId?: PresetId): Session {
+export function createInitialSession(agentSource: AgentSource, presetId?: PresetId, userId: string = "anonymous"): Session {
   return {
     id: uuid(),
     scenario: "trolley-problem",
@@ -30,5 +30,6 @@ export function createInitialSession(agentSource: AgentSource, presetId?: Preset
     systemPrompt: "",
     agentSource,
     presetId,
+    userId,
   };
 }

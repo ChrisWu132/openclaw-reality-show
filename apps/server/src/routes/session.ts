@@ -5,6 +5,8 @@ import { createSession, getSession } from "../engine/state-manager.js";
 import { runSession, cancelSession } from "../engine/scene-engine.js";
 import { setSessionSSE, hasSessionSSE, removeSessionSSE } from "../sse/sse-connections.js";
 import { resolveOpenClaw, rejectOpenClaw, rejectAllForSession } from "../sse/openclaw-resolver.js";
+import { requireAuth, requireAuthQuery, requireDelegation } from "../auth/middleware.js";
+import { issueDelegationToken, revokeAllForSession as revokeDelegationTokens } from "../models/delegation.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("routes:session");
@@ -12,7 +14,7 @@ export const sessionRouter = Router();
 
 const validPresetIds = new Set(PERSONALITY_PRESETS.map((p) => p.id));
 
-sessionRouter.post("/session/create", async (req, res) => {
+sessionRouter.post("/session/create", requireAuth, async (req, res) => {
   const { scenario, agentSource, presetId } = req.body as {
     scenario?: string;
     agentSource?: AgentSource;
@@ -42,10 +44,10 @@ sessionRouter.post("/session/create", async (req, res) => {
     }
   }
 
-  const session = createSession(agentSource, presetId);
+  const session = createSession(agentSource, presetId, req.userId);
   const sseUrl = `/api/session/${session.id}/events`;
 
-  logger.info(`Session created: ${session.id}`, { agentSource, presetId });
+  logger.info(`Session created: ${session.id}`, { agentSource, presetId, userId: req.userId });
 
   res.status(201).json({
     sessionId: session.id,
@@ -56,12 +58,18 @@ sessionRouter.post("/session/create", async (req, res) => {
 });
 
 // SSE endpoint for trolley session events
-sessionRouter.get("/session/:sessionId/events", (req, res) => {
+sessionRouter.get("/session/:sessionId/events", requireAuthQuery, (req, res) => {
   const sessionId = req.params.sessionId;
   const session = getSession(sessionId);
 
   if (!session) {
     res.status(404).json({ error: { code: "SESSION_NOT_FOUND", message: "Session not found" } });
+    return;
+  }
+
+  // Owner check: only the session creator can connect
+  if (process.env.AUTH_REQUIRED === "true" && session.userId !== req.userId) {
+    res.status(403).json({ error: { code: "FORBIDDEN", message: "You are not the owner of this session" } });
     return;
   }
 
@@ -96,16 +104,57 @@ sessionRouter.get("/session/:sessionId/events", (req, res) => {
     });
   }, 2000);
 
-  // Cleanup on client disconnect
+  // Cleanup on client disconnect — revoke delegation tokens
   req.on("close", () => {
     removeSessionSSE(sessionId);
     cancelSession(sessionId);
     rejectAllForSession(sessionId);
+    revokeDelegationTokens(sessionId);
   });
 });
 
-// OpenClaw response relay endpoint
-sessionRouter.post("/session/:sessionId/openclaw", (req, res) => {
+// Issue a delegation token for OpenClaw relay
+sessionRouter.post("/session/:sessionId/authorize", requireAuth, (req, res) => {
+  const { sessionId } = req.params;
+  const session = getSession(sessionId);
+
+  if (!session) {
+    res.status(404).json({ error: { code: "SESSION_NOT_FOUND", message: "Session not found" } });
+    return;
+  }
+
+  if (process.env.AUTH_REQUIRED === "true" && session.userId !== req.userId) {
+    res.status(403).json({ error: { code: "FORBIDDEN", message: "You are not the owner of this session" } });
+    return;
+  }
+
+  const token = issueDelegationToken(req.userId!, sessionId);
+  logger.info("Delegation token issued", { sessionId, userId: req.userId });
+  res.json({ delegationToken: token });
+});
+
+// Revoke all delegation tokens for a session
+sessionRouter.post("/session/:sessionId/revoke", requireAuth, (req, res) => {
+  const { sessionId } = req.params;
+  const session = getSession(sessionId);
+
+  if (!session) {
+    res.status(404).json({ error: { code: "SESSION_NOT_FOUND", message: "Session not found" } });
+    return;
+  }
+
+  if (process.env.AUTH_REQUIRED === "true" && session.userId !== req.userId) {
+    res.status(403).json({ error: { code: "FORBIDDEN", message: "You are not the owner of this session" } });
+    return;
+  }
+
+  revokeDelegationTokens(sessionId);
+  logger.info("Delegation tokens revoked", { sessionId, userId: req.userId });
+  res.json({ message: "All delegation tokens for this session have been revoked" });
+});
+
+// OpenClaw response relay endpoint — protected by delegation token
+sessionRouter.post("/session/:sessionId/openclaw", requireDelegation("submit_action"), (req, res) => {
   const { sessionId } = req.params;
   const session = getSession(sessionId);
   if (!session) {

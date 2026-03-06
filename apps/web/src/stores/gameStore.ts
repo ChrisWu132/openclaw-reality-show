@@ -11,6 +11,7 @@ interface GameState {
   phase: GamePhase;
   sessionId: string | null;
   sseUrl: string | null;
+  delegationToken: string | null;
   agentSource: AgentSource | null;
   presetId: PresetId | null;
   presetName: string | null;
@@ -52,6 +53,7 @@ interface GameState {
   setGameMode: (mode: GameMode) => void;
   setPhase: (phase: GamePhase) => void;
   setSseUrl: (url: string) => void;
+  setDelegationToken: (token: string) => void;
   setAgentSource: (source: AgentSource, presetId?: PresetId) => void;
   setScenePhase: (phase: ScenePhase) => void;
   setConsequenceSubPhase: (subPhase: ConsequenceSubPhase) => void;
@@ -145,6 +147,7 @@ const initialState = {
   phase: "intro" as GamePhase,
   sessionId: null as string | null,
   sseUrl: null as string | null,
+  delegationToken: null as string | null,
   agentSource: null as AgentSource | null,
   presetId: null as PresetId | null,
   presetName: null as string | null,
@@ -170,6 +173,7 @@ export const useGameStore = create<GameState>((set) => ({
   setGameMode: (gameMode) => set({ gameMode }),
   setPhase: (phase) => set({ phase }),
   setSseUrl: (url) => set({ sseUrl: url }),
+  setDelegationToken: (token) => set({ delegationToken: token }),
   setAgentSource: (agentSource, presetId) => set({ agentSource, presetId: presetId ?? null }),
   setScenePhase: (scenePhase) => set({ scenePhase, consequenceSubPhase: scenePhase === "consequence" ? "traveling" : null }),
   setConsequenceSubPhase: (consequenceSubPhase) => set({ consequenceSubPhase }),

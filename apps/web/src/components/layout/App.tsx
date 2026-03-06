@@ -1,5 +1,8 @@
+import { useEffect } from "react";
 import { useGameStore } from "../../stores/gameStore";
+import { useAuthStore } from "../../stores/authStore";
 import { useSSE } from "../../hooks/useSSE";
+import { LoginScreen } from "../ui/LoginScreen";
 import { IntroScreen } from "../ui/IntroScreen";
 import { ModeSelector } from "../ui/ModeSelector";
 import { AgentPicker } from "../ui/AgentPicker";
@@ -13,7 +16,30 @@ export function App() {
   const phase = useGameStore((s) => s.phase);
   const sseUrl = useGameStore((s) => s.sseUrl);
 
+  const user = useAuthStore((s) => s.user);
+  const authLoading = useAuthStore((s) => s.loading);
+  const restoreSession = useAuthStore((s) => s.restoreSession);
+
   useSSE(sseUrl);
+
+  // Restore auth session on mount
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
+
+  // Show loading spinner during auth restore
+  if (authLoading && !user) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#707080" }}>
+        ...
+      </div>
+    );
+  }
+
+  // Auth gate — show login if no user
+  if (!user) {
+    return <LoginScreen />;
+  }
 
   let content;
   switch (phase) {

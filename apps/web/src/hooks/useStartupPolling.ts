@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useStartupStore } from "../stores/startupStore";
+import { useAuthStore } from "../stores/authStore";
 import { getStartupGame } from "../services/startup-api";
 
 const POLL_INTERVAL = 3000;
@@ -32,8 +33,11 @@ export function useStartupPolling(gameId: string | null): void {
     poll();
     timerRef.current = setInterval(poll, POLL_INTERVAL);
 
-    // SSE for instant updates
-    const sseUrl = `/api/startup/games/${gameId}/events`;
+    // SSE for instant updates — append auth token as query param
+    const token = useAuthStore.getState().token;
+    const sseUrl = token
+      ? `/api/startup/games/${gameId}/events?token=${encodeURIComponent(token)}`
+      : `/api/startup/games/${gameId}/events`;
     let es: EventSource | null = null;
 
     try {

@@ -84,6 +84,12 @@ Different agents make different decisions. After each session, the decision log 
 Track all significant changes here. Agents must update this section when making changes.
 
 ### [Unreleased]
+- 2026-03-05: [infrastructure] Login + session-scoped authorization system
+  - Added: user registration/login (bcryptjs + JWT), delegation tokens for OpenClaw relay
+  - New files: db/database.ts (SQLite), auth/passwords.ts, auth/jwt.ts, auth/middleware.ts, routes/auth.ts, models/user.ts, models/delegation.ts, types/auth.ts, authStore.ts, LoginScreen.tsx, auth-api.ts
+  - Modified: index.ts (db init, auth router), session.ts (requireAuth, delegation endpoints, SSE owner check), startup.ts (requireAuth on create/start/delete, SSE auth), state-manager.ts + initial-state.ts (userId), Session type (userId), gameStore.ts (delegationToken), api.ts + startup-api.ts (auth headers), useSSE.ts + useStartupPolling.ts (token query param), useSession.ts (authorize delegation), App.tsx (auth gate)
+  - AUTH_REQUIRED env var: false=legacy passthrough, true=full auth enforcement
+  - Dependencies: better-sqlite3, bcryptjs, jsonwebtoken + @types
 - 2026-03-05: [infrastructure] WebSocket → SSE + REST refactor
   - Replaced bidirectional WebSocket with SSE (server push) + POST (OpenClaw relay only)
   - New: apps/server/src/sse/sse-connections.ts, apps/server/src/sse/openclaw-resolver.ts, apps/web/src/hooks/useSSE.ts

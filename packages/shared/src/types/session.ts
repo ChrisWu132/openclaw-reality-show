@@ -34,4 +34,5 @@ export interface Session {
   systemPrompt: string;
   agentSource: AgentSource;
   presetId?: PresetId;
+  userId: string;
 }

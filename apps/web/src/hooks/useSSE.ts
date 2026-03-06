@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useGameStore } from "../stores/gameStore";
+import { useAuthStore } from "../stores/authStore";
 import { openClawRelay } from "../services/openclaw-gateway";
 
 export function useSSE(sseUrl: string | null): void {
@@ -8,7 +9,11 @@ export function useSSE(sseUrl: string | null): void {
   useEffect(() => {
     if (!sseUrl) return;
 
-    const es = new EventSource(sseUrl);
+    // Append user JWT as query param for SSE auth
+    const token = useAuthStore.getState().token;
+    const url = token ? `${sseUrl}?token=${encodeURIComponent(token)}` : sseUrl;
+
+    const es = new EventSource(url);
     esRef.current = es;
 
     const EVENT_TYPES = [
@@ -61,6 +66,13 @@ async function handleOpenClawRequest(sseUrl: string, event: { requestId: string;
   // sseUrl: .../api/session/:id/events -> .../api/session/:id/openclaw
   const openclawUrl = sseUrl.replace(/\/events$/, "/openclaw");
 
+  // Build headers — include delegation token if available
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const delegationToken = useGameStore.getState().delegationToken;
+  if (delegationToken) {
+    headers["Authorization"] = `Bearer ${delegationToken}`;
+  }
+
   try {
     if (!openClawRelay.connected) {
       await openClawRelay.connect();
@@ -68,14 +80,14 @@ async function handleOpenClawRequest(sseUrl: string, event: { requestId: string;
     const text = await openClawRelay.sendPrompt(prompt);
     await fetch(openclawUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ requestId, text }),
     });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : "OpenClaw relay failed";
     await fetch(openclawUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ requestId, error: errorMsg }),
     }).catch(() => { /* ignore fetch error */ });
   }

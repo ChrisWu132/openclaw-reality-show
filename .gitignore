@@ -6,3 +6,4 @@ debug/
 .vite/
 *.tsbuildinfo
 screenshots/
+data/
