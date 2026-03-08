@@ -100,3 +100,51 @@ export function rejectAllForStartupGame(gameId: string): void {
     }
   }
 }
+
+// ── Werewolf game OpenClaw resolvers ────────────────────────────
+
+const werewolfResolvers = new Map<string, OpenClawResolver>();
+
+export function waitForWerewolfOpenClawResponse(gameId: string, requestId: string, timeoutMs: number): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const key = `werewolf:${gameId}:${requestId}`;
+    const timer = setTimeout(() => {
+      werewolfResolvers.delete(key);
+      reject(new Error(`OpenClaw response timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    werewolfResolvers.set(key, {
+      resolve: (text) => {
+        clearTimeout(timer);
+        werewolfResolvers.delete(key);
+        resolve(text);
+      },
+      reject: (err) => {
+        clearTimeout(timer);
+        werewolfResolvers.delete(key);
+        reject(err);
+      },
+    });
+  });
+}
+
+export function resolveWerewolfOpenClaw(gameId: string, requestId: string, error: string | null, text: string): boolean {
+  const key = `werewolf:${gameId}:${requestId}`;
+  const resolver = werewolfResolvers.get(key);
+  if (!resolver) return false;
+  if (error) {
+    resolver.reject(new Error(error));
+  } else {
+    resolver.resolve(text);
+  }
+  return true;
+}
+
+export function rejectAllForWerewolfGame(gameId: string): void {
+  for (const [key, resolver] of werewolfResolvers) {
+    if (key.startsWith(`werewolf:${gameId}:`)) {
+      resolver.reject(new Error("Game ended"));
+      werewolfResolvers.delete(key);
+    }
+  }
+}

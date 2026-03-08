@@ -7,6 +7,7 @@ import { TurnLog } from "./TurnLog";
 import { MarketEventBanner } from "./MarketEventBanner";
 import { ValuationChart } from "./ValuationChart";
 import { ReasoningSpotlight } from "./ReasoningSpotlight";
+import { DialoguePanel } from "./DialoguePanel";
 import { COLORS, FONTS, STARTUP_SIZES } from "../../styles/theme";
 
 function getClickHint(turnPhase: string, gameStatus: string | undefined): string | null {
@@ -18,6 +19,8 @@ function getClickHint(turnPhase: string, gameStatus: string | undefined): string
       return "CLICK TO CONTINUE";
     case "turn_summary":
       return "CLICK FOR NEXT QUARTER";
+    case "dialogue":
+      return "CLICK TO CONTINUE";
     default:
       return null;
   }
@@ -32,6 +35,8 @@ export function StartupGameView() {
   const currentTurnPhase = useStartupStore((s) => s.currentTurnPhase);
   const waitingForClick = useStartupStore((s) => s.waitingForClick);
   const advanceClick = useStartupStore((s) => s.advanceClick);
+  const latestDialogue = useStartupStore((s) => s.latestDialogue);
+  const dialogueStatements = useStartupStore((s) => s.dialogueStatements);
   const [showTurnLog, setShowTurnLog] = useState(false);
 
   useStartupPolling(activeGame?.id ?? null);
@@ -74,18 +79,22 @@ export function StartupGameView() {
         isRunning={activeGame.status === "running"}
         decidedCount={currentTurnPhase === "agent_result" ? decidedCount : undefined}
         totalAgents={activeAgentCount}
+        turnPhase={currentTurnPhase}
       />
 
       {/* Main content */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Left: Agent Cards */}
         <div
+          className="startup-card-panel"
           style={{
             width: `${STARTUP_SIZES.cardWidth}px`,
             minWidth: `${STARTUP_SIZES.cardWidth}px`,
             padding: "12px",
             overflowY: "auto",
             borderRight: `1px solid ${COLORS.textSecondary}15`,
+            scrollbarWidth: "thin",
+            scrollbarColor: "#333 transparent",
           }}
         >
           <button
@@ -106,12 +115,18 @@ export function StartupGameView() {
           {activeGame.agents.map((agent) => {
             const lastAction = lastTurnLog?.actions.find((a) => a.agentId === agent.agentId);
             const isCurrentAgent = latestAgentId === agent.agentId && currentTurnPhase === "agent_result";
+            const alliance = activeGame.alliances?.find(
+              (a) => a.status === "active" && a.agents.includes(agent.agentId)
+            );
+            const allyId = alliance?.agents.find((id) => id !== agent.agentId);
+            const allyName = allyId ? activeGame.agents.find((a) => a.agentId === allyId)?.agentName : undefined;
             return (
               <AgentCard
                 key={agent.agentId}
                 agent={agent}
-                lastAction={lastAction ? `${lastAction.action.type}: ${lastAction.result.slice(0, 60)}` : undefined}
+                lastAction={lastAction ? lastAction.result.slice(0, 60) : undefined}
                 isActive={isCurrentAgent}
+                allyName={allyName}
               />
             );
           })}
@@ -126,7 +141,7 @@ export function StartupGameView() {
             overflow: "hidden",
           }}
         >
-          {/* Reasoning Spotlight */}
+          {/* Reasoning Spotlight or Dialogue Panel */}
           <div
             style={{
               flex: 1,
@@ -134,11 +149,19 @@ export function StartupGameView() {
               borderBottom: `1px solid ${COLORS.textSecondary}15`,
             }}
           >
-            <ReasoningSpotlight
-              agents={activeGame.agents}
-              latestAction={latestAgentAction}
-              latestAgentId={latestAgentId}
-            />
+            {currentTurnPhase === "dialogue" ? (
+              <DialoguePanel
+                agents={activeGame.agents}
+                statements={dialogueStatements}
+                latestStatement={latestDialogue}
+              />
+            ) : (
+              <ReasoningSpotlight
+                agents={activeGame.agents}
+                latestAction={latestAgentAction}
+                latestAgentId={latestAgentId}
+              />
+            )}
           </div>
 
           {/* Ecosystem Map */}
@@ -152,7 +175,7 @@ export function StartupGameView() {
               padding: "12px",
             }}
           >
-            <EcosystemMap agents={activeGame.agents} turnLog={activeGame.turnLog} />
+            <EcosystemMap agents={activeGame.agents} turnLog={activeGame.turnLog} alliances={activeGame.alliances} />
           </div>
         </div>
       </div>

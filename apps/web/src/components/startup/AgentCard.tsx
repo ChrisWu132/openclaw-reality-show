@@ -1,4 +1,4 @@
-import type { StartupAgent } from "@openclaw/shared";
+import type { StartupAgent, Alliance } from "@openclaw/shared";
 import { COLORS, FONTS, STARTUP_SIZES } from "../../styles/theme";
 
 function formatCash(n: number): string {
@@ -16,9 +16,10 @@ interface AgentCardProps {
   agent: StartupAgent;
   lastAction?: string;
   isActive?: boolean;
+  allyName?: string;
 }
 
-export function AgentCard({ agent, lastAction, isActive }: AgentCardProps) {
+export function AgentCard({ agent, lastAction, isActive, allyName }: AgentCardProps) {
   const r = agent.resources;
   const valuation = calcValuation(agent);
   const isOut = agent.status !== "active";
@@ -56,6 +57,23 @@ export function AgentCard({ agent, lastAction, isActive }: AgentCardProps) {
         <ResourceBar label="MODEL" value={`${r.model}`} percent={r.model} color="#d94a4a" />
         <ResourceBar label="USERS" value={r.users.toLocaleString()} percent={Math.min(100, r.users / 100)} color="#a64ad9" />
       </div>
+
+      {allyName && (
+        <div
+          style={{
+            fontSize: STARTUP_SIZES.bodySm,
+            fontFamily: FONTS.pixel,
+            color: "#4ad97a",
+            marginTop: "4px",
+            padding: "2px 6px",
+            border: "1px solid #4ad97a40",
+            background: "#4ad97a10",
+            display: "inline-block",
+          }}
+        >
+          ALLIED: {allyName}
+        </div>
+      )}
 
       {lastAction && (
         <div

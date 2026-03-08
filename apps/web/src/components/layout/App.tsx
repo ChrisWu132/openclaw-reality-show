@@ -10,6 +10,7 @@ import { LoadingScreen } from "../ui/LoadingScreen";
 import { GameContainer } from "./GameContainer";
 import { MoralProfileCard } from "../ui/MoralProfileCard";
 import { StartupApp } from "../startup/StartupApp";
+import { WerewolfApp } from "../werewolf/WerewolfApp";
 import { ErrorOverlay } from "../ui/ErrorOverlay";
 import { RelayPage } from "../screens/RelayPage";
 
@@ -71,6 +72,9 @@ export function App() {
       break;
     case "startup":
       content = <StartupApp />;
+      break;
+    case "werewolf":
+      content = <WerewolfApp />;
       break;
     default:
       content = <IntroScreen />;

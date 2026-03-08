@@ -1,4 +1,4 @@
-import type { StartupAction, StartupActionType } from "@openclaw/shared";
+import type { StartupAction, StartupActionType, DialogueStatement, DialogueTone } from "@openclaw/shared";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("startup-response-parser");
@@ -11,6 +11,7 @@ const VALID_TYPES = new Set<StartupActionType>([
   "ACQUIRE_DATA",
   "POACH",
   "OPEN_SOURCE",
+  "BETRAY",
 ]);
 
 function stripMarkdownFences(raw: string): string {
@@ -65,8 +66,73 @@ export function parseStartupAction(rawText: string): StartupParseResult {
     return { success: false, error: "POACH requires a targetAgentId" };
   }
 
+  if (actionType === "BETRAY" && !targetAgentId) {
+    return { success: false, error: "BETRAY requires a targetAgentId" };
+  }
+
   const reasoning = typeof parsed.reasoning === "string" ? parsed.reasoning : "No reasoning provided";
 
   const action: StartupAction = { type: actionType, targetAgentId, reasoning };
   return { success: true, action };
+}
+
+// ── Dialogue Response Parser ─────────────────────────────────
+
+const VALID_TONES = new Set<DialogueTone>([
+  "threatening", "mocking", "diplomatic", "desperate", "confident", "accusatory",
+]);
+
+export interface DialogueParseResult {
+  success: boolean;
+  statement?: DialogueStatement;
+  proposedAlliance?: string | null;
+  error?: string;
+}
+
+export function parseDialogueResponse(rawText: string): DialogueParseResult {
+  if (!rawText || rawText.trim() === "") {
+    return { success: false, error: "Empty dialogue response" };
+  }
+
+  const stripped = stripMarkdownFences(rawText);
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(stripped);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.warn("Failed to parse dialogue response", { error: msg });
+    return { success: false, error: `Invalid JSON: ${msg}` };
+  }
+
+  if (typeof parsed !== "object" || parsed === null) {
+    return { success: false, error: "Response is not a JSON object" };
+  }
+
+  const text = typeof parsed.text === "string" ? parsed.text.trim() : "";
+  if (!text) {
+    return { success: false, error: "Missing 'text' field" };
+  }
+
+  const tone = (typeof parsed.tone === "string" ? parsed.tone.toLowerCase() : "confident") as DialogueTone;
+  const validTone = VALID_TONES.has(tone) ? tone : "confident";
+
+  const targetAgentId =
+    typeof parsed.targetAgentId === "string" && parsed.targetAgentId.trim()
+      ? parsed.targetAgentId.trim()
+      : null;
+
+  const proposedAlliance =
+    typeof parsed.proposedAlliance === "string" && parsed.proposedAlliance.trim()
+      ? parsed.proposedAlliance.trim()
+      : null;
+
+  const statement: DialogueStatement = {
+    speakerId: "", // filled by caller
+    targetAgentId,
+    text,
+    tone: validTone,
+  };
+
+  return { success: true, statement, proposedAlliance };
 }

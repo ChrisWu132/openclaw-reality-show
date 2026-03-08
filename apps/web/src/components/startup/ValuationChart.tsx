@@ -35,13 +35,39 @@ export function ValuationChart({ game, height }: ValuationChartProps) {
   const maxVal = Math.max(...allValues, 1);
 
   if (maxVal <= 1 && allValues.every((v) => v === 0)) {
+    // Show mini resource comparison instead of empty message
     return (
       <div>
         <div style={{ fontSize: STARTUP_SIZES.headerSm, color: COLORS.textSecondary, fontFamily: FONTS.pixel, marginBottom: "8px" }}>
-          VALUATION
+          RESOURCES (no valuation yet)
         </div>
-        <div style={{ fontSize: STARTUP_SIZES.body, color: "#606060", fontFamily: FONTS.body, padding: "16px 0", textAlign: "center" }}>
-          No valuation yet — deploy to get users
+        <div style={{ display: "flex", gap: "16px", padding: "12px 0", justifyContent: "center", flexWrap: "wrap" }}>
+          {game.agents.map((agent) => (
+            <div key={agent.agentId} style={{ textAlign: "center" }}>
+              <div style={{ fontSize: STARTUP_SIZES.bodySm, color: agent.color, fontFamily: FONTS.body, fontWeight: "bold", marginBottom: "6px" }}>
+                {agent.agentName.slice(0, 10)}
+              </div>
+              <div style={{ display: "flex", gap: "4px" }}>
+                {(["compute", "data", "model"] as const).map((key) => {
+                  const val = agent.resources[key];
+                  return (
+                    <div key={key} style={{ width: "20px", textAlign: "center" }}>
+                      <div
+                        style={{
+                          height: `${Math.max(4, val * 0.4)}px`,
+                          width: "14px",
+                          background: agent.color,
+                          opacity: 0.6,
+                          margin: "0 auto 2px",
+                        }}
+                      />
+                      <div style={{ fontSize: "7px", color: COLORS.textSecondary }}>{key[0].toUpperCase()}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -57,9 +83,10 @@ export function ValuationChart({ game, height }: ValuationChartProps) {
   const plotW = W - XPAD_LEFT - XPAD_RIGHT;
   const plotH = H - YPAD * 2;
 
-  // Y-axis labels
-  const yLabels = [0, 25_000_000, 50_000_000, 75_000_000, 100_000_000].filter((v) => v <= Math.max(maxVal * 1.1, 100_000_000));
-  const yMax = Math.max(maxVal * 1.1, 100_000_000);
+  // Y-axis: scale dynamically to actual data
+  const yMax = Math.max(maxVal * 1.5, 10_000);
+  const yStep = yMax / 4;
+  const yLabels = [0, yStep, yStep * 2, yStep * 3, yMax].map((v) => Math.round(v));
 
   // X-axis labels
   const xLabels = [1, 5, 10, 15, 20].filter((t) => t <= maxTurns);
@@ -94,7 +121,7 @@ export function ValuationChart({ game, height }: ValuationChartProps) {
                 fontSize={STARTUP_SIZES.bodySm}
                 fontFamily={FONTS.body}
               >
-                {val >= 1_000_000 ? `$${val / 1_000_000}M` : val === 0 ? "$0" : `$${val / 1_000}K`}
+                {val >= 1_000_000 ? `$${(val / 1_000_000).toFixed(1)}M` : val === 0 ? "$0" : `$${(val / 1_000).toFixed(0)}K`}
               </text>
             </g>
           );
@@ -118,8 +145,8 @@ export function ValuationChart({ game, height }: ValuationChartProps) {
           );
         })}
 
-        {/* $100M threshold dashed line */}
-        {100_000_000 <= yMax && (
+        {/* $100M threshold dashed line — only show when scale is large enough */}
+        {yMax >= 50_000_000 && (
           <line
             x1={XPAD_LEFT}
             y1={thresholdY}

@@ -12,7 +12,8 @@
     "build": "npm run build -w packages/shared && npm run build -w apps/server && npm run build -w apps/web",
     "test": "npm test -w packages/shared && npm test -w apps/server && npm test -w apps/web",
     "typecheck": "tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p apps/server/tsconfig.json",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "start": "node apps/server/dist/index.js"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",

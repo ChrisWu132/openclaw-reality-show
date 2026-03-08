@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import type { Dilemma, MoralProfile, DecisionLogEntry, AgentSource, PresetId } from "@openclaw/shared";
 
-export type GameMode = "trolley" | "startup" | null;
-export type GamePhase = "intro" | "mode-select" | "agent-select" | "connecting" | "playing" | "profile" | "startup";
+export type GameMode = "trolley" | "startup" | "werewolf" | null;
+export type GamePhase = "intro" | "mode-select" | "agent-select" | "connecting" | "playing" | "profile" | "startup" | "werewolf";
 export type ScenePhase = "idle" | "round_start" | "dilemma" | "deciding" | "decision" | "consequence";
 export type ConsequenceSubPhase = "traveling" | "impact" | "aftermath" | null;
 

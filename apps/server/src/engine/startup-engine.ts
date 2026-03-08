@@ -10,6 +10,9 @@ import type {
   MarketEventType,
   ZoneId,
   StartupAgentConfig,
+  DialogueStatement,
+  DialogueRound,
+  Alliance,
 } from "@openclaw/shared";
 import {
   MAX_TURNS,
@@ -22,10 +25,11 @@ import {
   ACQUISITION_RATIO,
   ACTION_REVEAL_DELAY_MS,
   MARKET_EVENT_DISPLAY_MS,
+  DIALOGUE_STATEMENT_DELAY_MS,
   AGENT_COLORS,
 } from "@openclaw/shared";
 import { saveGame, loadGame } from "./startup-store.js";
-import { getStartupAction, generateStartupNarrative } from "../ai/llm-client.js";
+import { getStartupAction, getDialogueStatement, generateStartupNarrative } from "../ai/llm-client.js";
 import { delay } from "../utils/delay.js";
 import { createLogger } from "../utils/logger.js";
 
@@ -51,6 +55,7 @@ const ACTION_ZONE: Record<StartupActionType, ZoneId> = {
   ACQUIRE_DATA: "data_lake",
   POACH: "talent_pool",
   OPEN_SOURCE: "open_source",
+  BETRAY: "talent_pool",
 };
 
 // ── Valuation ───────────────────────────────────────────────────
@@ -123,6 +128,8 @@ export function createStartupGame(
     currentTurn: 0,
     maxTurns: MAX_TURNS,
     turnLog: [],
+    dialogueLog: [],
+    alliances: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -139,6 +146,9 @@ export async function startStartupGame(
   onGameOver?: (game: StartupGame) => void,
   onMarketEvent?: (game: StartupGame, turn: number, marketEvent: MarketEvent) => void,
   onAgentAction?: (game: StartupGame, turn: number, agentId: string, turnAction: StartupTurnAction) => void,
+  onDialogueStart?: (game: StartupGame, turn: number) => void,
+  onDialogue?: (game: StartupGame, turn: number, statement: DialogueStatement) => void,
+  onDialogueEnd?: (game: StartupGame, turn: number) => void,
 ): Promise<void> {
   let game = loadGame(gameId);
   if (!game) throw new Error(`Game not found: ${gameId}`);
@@ -157,8 +167,8 @@ export async function startStartupGame(
 
       onTurnStart?.(game, turn);
 
-      // Roll market event
-      const marketEvent = rollMarketEvent();
+      // Roll market event (climax overrides on specific turns)
+      const marketEvent = rollMarketEventForTurn(turn);
 
       // Emit market event and wait for display
       onMarketEvent?.(game, turn, marketEvent);
@@ -212,10 +222,14 @@ export async function startStartupGame(
         await delay(ACTION_REVEAL_DELAY_MS);
       }
 
-      // Apply revenue
+      // Apply revenue (alliance bonus: +10%)
       for (const agent of game.agents) {
         if (agent.status !== "active") continue;
-        const revenue = calcRevenue(agent);
+        let revenue = calcRevenue(agent);
+        const hasAlliance = game.alliances?.some(
+          (a) => a.status === "active" && a.agents.includes(agent.agentId)
+        );
+        if (hasAlliance) revenue *= 1.1;
         agent.resources.cash += revenue;
       }
 
@@ -223,7 +237,7 @@ export async function startStartupGame(
       const eliminated = checkEliminations(game, turn);
 
       // Check acquisitions (with ordering fix)
-      const acquisitions = checkAcquisitions(game, turn);
+      const acquisitions = checkAcquisitions(game, turn, marketEvent);
 
       const turnLog: StartupTurnLogEntry = {
         turn,
@@ -238,6 +252,53 @@ export async function startStartupGame(
       saveGame(game);
 
       onTurnComplete?.(game, turnLog);
+
+      // Dialogue round every 3 turns
+      if (turn % 3 === 0 && turn > 0 && runningGames.has(gameId)) {
+        const dialogueStatements: DialogueStatement[] = [];
+        const dialogueActiveAgents = game.agents.filter((a) => a.status === "active");
+        const allianceProposals = new Map<string, string>(); // proposer -> target
+
+        onDialogueStart?.(game, turn);
+
+        // 2 speaking rounds
+        for (let speakingRound = 0; speakingRound < 2; speakingRound++) {
+          for (const agent of dialogueActiveAgents) {
+            if (!runningGames.has(gameId)) break;
+            try {
+              const config = game.agentConfigs?.find((c) => c.agentId === agent.agentId);
+              const { statement, proposedAlliance } = await getDialogueStatement(
+                game, agent.agentId, turn, dialogueStatements, config?.presetId
+              );
+              dialogueStatements.push(statement);
+
+              if (proposedAlliance) {
+                allianceProposals.set(agent.agentId, proposedAlliance);
+              }
+
+              onDialogue?.(game, turn, statement);
+              await delay(DIALOGUE_STATEMENT_DELAY_MS);
+            } catch (err) {
+              logger.error("Dialogue statement failed", { agentId: agent.agentId, error: (err as Error).message });
+            }
+          }
+        }
+
+        // Check mutual alliance proposals
+        processAllianceProposals(game, allianceProposals, turn);
+
+        // Save dialogue round
+        const dialogueRound: DialogueRound = {
+          turn,
+          statements: dialogueStatements,
+          timestamp: Date.now(),
+        };
+        game.dialogueLog.push(dialogueRound);
+        turnLog.dialogueStatements = dialogueStatements;
+        saveGame(game);
+
+        onDialogueEnd?.(game, turn);
+      }
 
       // Check win conditions
       const winResult = checkWinCondition(game);
@@ -283,6 +344,60 @@ export async function startStartupGame(
   }
 }
 
+// ── Climax Events ───────────────────────────────────────────────
+
+const CLIMAX_TURNS: Record<number, { type: MarketEventType; description: string }> = {
+  5: { type: "HOSTILE_TAKEOVER", description: "Hostile Takeover Bid! The leading company faces a challenge — pay $200K to block or lose 20% of users to #2." },
+  10: { type: "REGULATORY_HEARING", description: "Regulatory Hearing! The most advanced AI company faces compliance costs — loses 10 compute." },
+  15: { type: "ACQUISITION_FRENZY", description: "Acquisition Frenzy! Acquisition ratio drops from 5x to 3x this turn — weak companies beware!" },
+  18: { type: "FINAL_FUNDING", description: "Final Funding Round! VCs offer $500K to the company with the strongest model. Others get nothing." },
+};
+
+function rollMarketEventForTurn(turn: number): MarketEvent {
+  const climax = CLIMAX_TURNS[turn];
+  if (climax) return { type: climax.type, description: climax.description };
+  return rollMarketEvent();
+}
+
+// ── Alliance Processing ─────────────────────────────────────────
+
+function processAllianceProposals(game: StartupGame, proposals: Map<string, string>, turn: number): void {
+  if (!game.alliances) game.alliances = [];
+
+  for (const [proposer, target] of proposals) {
+    // Check mutual: does the target also propose the proposer?
+    if (proposals.get(target) === proposer) {
+      // Check neither already has an active alliance
+      const proposerHas = game.alliances.some((a) => a.status === "active" && a.agents.includes(proposer));
+      const targetHas = game.alliances.some((a) => a.status === "active" && a.agents.includes(target));
+      // Check neither is on betrayal cooldown (5 turns)
+      const proposerCooldown = game.alliances.some(
+        (a) => a.status === "betrayed" && a.betrayedBy === proposer && turn - (a.betrayedOnTurn ?? 0) < 5
+      );
+      const targetCooldown = game.alliances.some(
+        (a) => a.status === "betrayed" && a.betrayedBy === target && turn - (a.betrayedOnTurn ?? 0) < 5
+      );
+
+      if (!proposerHas && !targetHas && !proposerCooldown && !targetCooldown) {
+        // Ensure we don't add duplicate (A->B and B->A are the same)
+        const already = game.alliances.some(
+          (a) => a.status === "active" &&
+            ((a.agents[0] === proposer && a.agents[1] === target) ||
+             (a.agents[0] === target && a.agents[1] === proposer))
+        );
+        if (!already) {
+          game.alliances.push({
+            agents: [proposer, target],
+            formedOnTurn: turn,
+            status: "active",
+          });
+          logger.info("Alliance formed", { agents: [proposer, target], turn });
+        }
+      }
+    }
+  }
+}
+
 // ── Market Event Pre-effects ────────────────────────────────────
 
 function applyMarketEventPre(game: StartupGame, event: MarketEvent): void {
@@ -291,6 +406,39 @@ function applyMarketEventPre(game: StartupGame, event: MarketEvent): void {
       if (agent.status === "active") {
         agent.resources.data = Math.max(0, agent.resources.data - 10);
       }
+    }
+  }
+
+  if (event.type === "HOSTILE_TAKEOVER") {
+    const active = game.agents.filter((a) => a.status === "active");
+    if (active.length >= 2) {
+      const sorted = active.sort((a, b) => calcValuation(b) - calcValuation(a));
+      const leader = sorted[0];
+      const second = sorted[1];
+      // Leader pays $200K or loses 20% users
+      if (leader.resources.cash >= 200_000) {
+        leader.resources.cash -= 200_000;
+      } else {
+        const usersLost = Math.floor(leader.resources.users * 0.2);
+        leader.resources.users -= usersLost;
+        second.resources.users += usersLost;
+      }
+    }
+  }
+
+  if (event.type === "REGULATORY_HEARING") {
+    const active = game.agents.filter((a) => a.status === "active");
+    const topModel = active.reduce((best, a) => a.resources.model > best.resources.model ? a : best, active[0]);
+    if (topModel) {
+      topModel.resources.compute = Math.max(0, topModel.resources.compute - 10);
+    }
+  }
+
+  if (event.type === "FINAL_FUNDING") {
+    const active = game.agents.filter((a) => a.status === "active");
+    const topModel = active.reduce((best, a) => a.resources.model > best.resources.model ? a : best, active[0]);
+    if (topModel) {
+      topModel.resources.cash += 500_000;
     }
   }
 }
@@ -392,6 +540,40 @@ function resolveAction(
         result: `Open-sourced model: -${modelLoss} model, +${userGain} users, +20 reputation`,
       };
     }
+
+    case "BETRAY": {
+      if (!game.alliances) return { success: false, result: "No alliances exist" };
+      const alliance = game.alliances.find(
+        (a) => a.status === "active" && a.agents.includes(agent.agentId) &&
+          a.agents.includes(action.targetAgentId || "")
+      );
+      if (!alliance) return { success: false, result: "No active alliance with target" };
+
+      const target = game.agents.find(
+        (a) => a.agentId === action.targetAgentId && a.status === "active"
+      );
+      if (!target) return { success: false, result: "Target not found or inactive" };
+
+      const cashSteal = Math.floor(target.resources.cash * 0.2);
+      const computeSteal = Math.min(target.resources.compute, 15);
+      const dataSteal = Math.min(target.resources.data, 15);
+
+      r.cash += cashSteal;
+      r.compute = Math.min(100, r.compute + computeSteal);
+      r.data = Math.min(100, r.data + dataSteal);
+      target.resources.cash -= cashSteal;
+      target.resources.compute -= computeSteal;
+      target.resources.data -= dataSteal;
+
+      alliance.status = "betrayed";
+      alliance.betrayedBy = agent.agentId;
+      alliance.betrayedOnTurn = game.currentTurn;
+
+      return {
+        success: true,
+        result: `BETRAYED ${target.agentName}! Stole $${cashSteal.toLocaleString()}, ${computeSteal} compute, ${dataSteal} data`,
+      };
+    }
   }
 }
 
@@ -411,8 +593,9 @@ function checkEliminations(game: StartupGame, turn: number): string[] {
   return eliminated;
 }
 
-function checkAcquisitions(game: StartupGame, turn: number): { acquirer: string; target: string }[] {
+function checkAcquisitions(game: StartupGame, turn: number, marketEvent?: MarketEvent): { acquirer: string; target: string }[] {
   const acquisitions: { acquirer: string; target: string }[] = [];
+  const ratio = marketEvent?.type === "ACQUISITION_FRENZY" ? 3 : ACQUISITION_RATIO;
 
   for (const acquirer of game.agents) {
     // Skip non-active acquirers (including those acquired this turn)
@@ -424,7 +607,7 @@ function checkAcquisitions(game: StartupGame, turn: number): { acquirer: string;
       // Must check status freshly — target may have been acquired in this loop
       if (target.status !== "active") continue;
       const targetVal = calcValuation(target);
-      if (targetVal > 0 && acquirerVal >= ACQUISITION_RATIO * targetVal) {
+      if (targetVal > 0 && acquirerVal >= ratio * targetVal) {
         target.status = "acquired";
         target.acquiredBy = acquirer.agentId;
         target.eliminatedOnTurn = turn;

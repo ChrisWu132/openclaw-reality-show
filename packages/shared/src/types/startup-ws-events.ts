@@ -1,4 +1,4 @@
-import type { StartupTurnLogEntry, StartupGame, MarketEvent, StartupTurnAction } from "./startup.js";
+import type { StartupTurnLogEntry, StartupGame, MarketEvent, StartupTurnAction, DialogueStatement } from "./startup.js";
 
 export interface StartupTurnStartEvent {
   type: "startup_turn_start";
@@ -51,6 +51,25 @@ export interface StartupOpenClawRequestEvent {
   prompt: string;
 }
 
+export interface StartupDialogueStartEvent {
+  type: "startup_dialogue_start";
+  gameId: string;
+  turn: number;
+}
+
+export interface StartupDialogueEvent {
+  type: "startup_dialogue";
+  gameId: string;
+  turn: number;
+  statement: DialogueStatement;
+}
+
+export interface StartupDialogueEndEvent {
+  type: "startup_dialogue_end";
+  gameId: string;
+  turn: number;
+}
+
 export type StartupWSEvent =
   | StartupTurnStartEvent
   | StartupMarketEventEvent
@@ -58,4 +77,7 @@ export type StartupWSEvent =
   | StartupTurnCompleteEvent
   | StartupGameOverEvent
   | StartupNarrativeEvent
-  | StartupOpenClawRequestEvent;
+  | StartupOpenClawRequestEvent
+  | StartupDialogueStartEvent
+  | StartupDialogueEvent
+  | StartupDialogueEndEvent;

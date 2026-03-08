@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import type { WSEvent, StartupWSEvent } from "@openclaw/shared";
+import type { WSEvent, StartupWSEvent, WerewolfWSEvent } from "@openclaw/shared";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("sse");
@@ -178,6 +178,75 @@ export function endRelaySSE(key: string): void {
   if (res) {
     try { res.end(); } catch { /* already closed */ }
     removeRelaySSE(key);
+  }
+}
+
+// -- Werewolf game connections (1:N) --
+const werewolfConnections = new Map<string, Set<Response>>();
+
+export function addWerewolfSSE(gameId: string, res: Response): void {
+  if (!werewolfConnections.has(gameId)) {
+    werewolfConnections.set(gameId, new Set());
+  }
+  werewolfConnections.get(gameId)!.add(res);
+  startHeartbeat(res);
+  logger.info(`Werewolf SSE spectator connected for game ${gameId}`);
+}
+
+export function removeWerewolfSSE(gameId: string, res: Response): void {
+  const clients = werewolfConnections.get(gameId);
+  if (clients) {
+    stopHeartbeat(res);
+    clients.delete(res);
+    if (clients.size === 0) werewolfConnections.delete(gameId);
+  }
+}
+
+export function broadcastWerewolfEvent(gameId: string, event: WerewolfWSEvent): void {
+  // Route werewolf_openclaw_request to the relay connection for the specific agent
+  if (event.type === "werewolf_openclaw_request" && "agentId" in event) {
+    const relayKey = `werewolf:${gameId}:${event.agentId}`;
+    if (emitWerewolfRelayEvent(relayKey, event)) {
+      return; // Sent to relay, don't broadcast to spectators
+    }
+  }
+
+  const clients = werewolfConnections.get(gameId);
+  if (!clients) return;
+  const data = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+  const dead: Response[] = [];
+  for (const res of clients) {
+    try {
+      res.write(data);
+    } catch {
+      dead.push(res);
+    }
+  }
+  for (const res of dead) {
+    removeWerewolfSSE(gameId, res);
+  }
+}
+
+export function endAllWerewolfSSE(gameId: string): void {
+  const clients = werewolfConnections.get(gameId);
+  if (!clients) return;
+  for (const res of clients) {
+    stopHeartbeat(res);
+    try { res.end(); } catch { /* already closed */ }
+  }
+  werewolfConnections.delete(gameId);
+}
+
+export function emitWerewolfRelayEvent(key: string, event: WerewolfWSEvent): boolean {
+  const relay = relayConnections.get(key);
+  if (!relay) return false;
+  try {
+    relay.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+    logger.debug(`Emitted to werewolf relay: ${event.type}`, { key });
+    return true;
+  } catch {
+    removeRelaySSE(key);
+    return false;
   }
 }
 

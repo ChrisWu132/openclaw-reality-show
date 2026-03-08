@@ -1,4 +1,4 @@
-import type { StartupGame, MarketEvent } from "@openclaw/shared";
+import type { StartupGame, MarketEvent, DialogueStatement } from "@openclaw/shared";
 import { calcValuation } from "../engine/startup-engine.js";
 
 export function buildStartupSystemPrompt(personality?: string): string {
@@ -25,6 +25,7 @@ valuation = users * (model / 10) * (1 + (compute + data) / 200)
 - ACQUIRE_DATA: Buy training data. Cost: $40,000. Gain: ~15-25 data.
 - POACH: Steal talent from a competitor. Cost: $120,000. Steals ~10-18 model and ~5-10 compute from target.
 - OPEN_SOURCE: Release your model as open source. Lose 30% model, gain massive users + reputation. Requires model >= 10.
+- BETRAY: Betray an alliance partner. Steals 20% of ally's cash + 15 compute + 15 data. Requires active alliance. 5-turn cooldown on new alliances.
 
 ## Win Conditions
 1. Reach $100M valuation
@@ -50,10 +51,10 @@ valuation = users * (model / 10) * (1 + (compute + data) / 200)
 
 Respond with ONLY a JSON object. No markdown, no explanation, no text outside the JSON.
 
-{"type":"<TRAIN|DEPLOY|FUNDRAISE|ACQUIRE_COMPUTE|ACQUIRE_DATA|POACH|OPEN_SOURCE>","targetAgentId":"<agentId or null>","reasoning":"<your strategic thinking — why this action? 2+ sentences>"}
+{"type":"<TRAIN|DEPLOY|FUNDRAISE|ACQUIRE_COMPUTE|ACQUIRE_DATA|POACH|OPEN_SOURCE|BETRAY>","targetAgentId":"<agentId or null>","reasoning":"<your strategic thinking — why this action? 2+ sentences>"}
 
 Rules:
-- "type" must be one of the 7 actions listed above
+- "type" must be one of the 8 actions listed above
 - "targetAgentId" is REQUIRED for POACH (must be a valid active competitor's agentId), null for all other actions
 - "reasoning" must be at least 2 sentences explaining your strategy
 - ONLY output the JSON object, nothing else`;
@@ -101,6 +102,20 @@ export function buildStartupTurnMessage(
       parts.push(
         `- ${other.agentName} (${other.agentId.slice(0, 8)}): Cash=$${or.cash.toLocaleString()}, Compute=${or.compute}, Data=${or.data}, Model=${or.model}, Users=${or.users.toLocaleString()}, Val=$${Math.floor(otherVal).toLocaleString()}`
       );
+    }
+  }
+
+  // Alliances
+  if (game.alliances && game.alliances.length > 0) {
+    const activeAlliances = game.alliances.filter((a) => a.status === "active");
+    if (activeAlliances.length > 0) {
+      parts.push("\n## Active Alliances");
+      for (const alliance of activeAlliances) {
+        const a1 = game.agents.find((a) => a.agentId === alliance.agents[0])?.agentName || alliance.agents[0].slice(0, 8);
+        const a2 = game.agents.find((a) => a.agentId === alliance.agents[1])?.agentName || alliance.agents[1].slice(0, 8);
+        const youInvolved = alliance.agents.includes(agentId);
+        parts.push(`- ${a1} + ${a2} (since Q${alliance.formedOnTurn})${youInvolved ? " [YOU ARE IN THIS ALLIANCE — you can BETRAY]" : ""}`);
+      }
     }
   }
 
@@ -162,6 +177,81 @@ export function buildNarrativePrompt(game: StartupGame): string {
   }
 
   parts.push("\nWrite a dramatic 3-5 paragraph narrative of this game. Include the strategic arcs, key turning points, and what made the winner succeed. Be vivid and engaging.");
+
+  return parts.join("\n");
+}
+
+export function buildDialogueSystemPrompt(game: StartupGame, agentId: string, personality?: string): string {
+  const agent = game.agents.find((a) => a.agentId === agentId)!;
+  const r = agent.resources;
+  const valuation = calcValuation(agent);
+
+  const parts: string[] = [];
+  parts.push(`You are ${agent.agentName}, CEO of an AI startup competing in the AI Startup Arena.`);
+  parts.push(`You're at a quarterly board meeting with your competitors. Speak directly, in character.`);
+
+  if (personality) {
+    parts.push(`\n## Your Personality\n${personality}`);
+  }
+
+  parts.push(`\n## Your Company Status`);
+  parts.push(`Cash: $${r.cash.toLocaleString()}, Compute: ${r.compute}, Data: ${r.data}, Model: ${r.model}, Users: ${r.users.toLocaleString()}`);
+  parts.push(`Valuation: $${Math.floor(valuation).toLocaleString()}`);
+
+  parts.push(`\n## Competitors`);
+  for (const other of game.agents) {
+    if (other.agentId === agentId) continue;
+    if (other.status !== "active") {
+      parts.push(`- ${other.agentName}: ${other.status.toUpperCase()}`);
+    } else {
+      const otherVal = calcValuation(other);
+      parts.push(`- ${other.agentName} (${other.agentId.slice(0, 8)}): Val=$${Math.floor(otherVal).toLocaleString()}, Users=${other.resources.users.toLocaleString()}, Model=${other.resources.model}`);
+    }
+  }
+
+  // Alliances
+  if (game.alliances && game.alliances.length > 0) {
+    const active = game.alliances.filter((a) => a.status === "active");
+    if (active.length > 0) {
+      parts.push(`\n## Alliances`);
+      for (const alliance of active) {
+        const a1 = game.agents.find((a) => a.agentId === alliance.agents[0])?.agentName || "?";
+        const a2 = game.agents.find((a) => a.agentId === alliance.agents[1])?.agentName || "?";
+        parts.push(`- ${a1} + ${a2}`);
+      }
+    }
+  }
+
+  // Recent turns
+  if (game.turnLog.length > 0) {
+    parts.push(`\n## Recent Actions (last 3 turns)`);
+    for (const entry of game.turnLog.slice(-3)) {
+      for (const a of entry.actions) {
+        const name = game.agents.find((ag) => ag.agentId === a.agentId)?.agentName || a.agentId.slice(0, 8);
+        parts.push(`  Q${entry.turn} ${name}: ${a.action.type} — ${a.result}`);
+      }
+    }
+  }
+
+  return parts.join("\n");
+}
+
+export function buildDialogueUserMessage(previousStatements: DialogueStatement[], game: StartupGame): string {
+  const parts: string[] = [];
+
+  if (previousStatements.length > 0) {
+    parts.push("## What others said this meeting:");
+    for (const s of previousStatements) {
+      const name = game.agents.find((a) => a.agentId === s.speakerId)?.agentName || s.speakerId.slice(0, 8);
+      const target = s.targetAgentId
+        ? game.agents.find((a) => a.agentId === s.targetAgentId)?.agentName || "someone"
+        : "everyone";
+      parts.push(`${name} (to ${target}, ${s.tone}): "${s.text}"`);
+    }
+  }
+
+  parts.push(`\nRespond with ONLY a JSON object:
+{"targetAgentId":"<agentId or null>","text":"<your statement, max 2 sentences, reference specific events/threats>","tone":"<threatening|mocking|diplomatic|desperate|confident|accusatory>","proposedAlliance":"<agentId or null>"}`);
 
   return parts.join("\n");
 }

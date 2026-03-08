@@ -17,6 +17,11 @@ export function ModeSelector() {
     setPhase("startup");
   }
 
+  function selectWerewolf() {
+    setGameMode("werewolf");
+    setPhase("werewolf");
+  }
+
   return (
     <div
       style={{
@@ -68,6 +73,14 @@ export function ModeSelector() {
           description="2-4 AI founders compete to build the most valuable AI company."
           accentColor={ACCENT_TEAL}
           onClick={selectStartup}
+        />
+
+        {/* AI Werewolf Card */}
+        <ModeCard
+          title="AI WEREWOLF"
+          description="5-7 AI agents play Werewolf. Watch them lie, accuse, and betray."
+          accentColor="#f0a500"
+          onClick={selectWerewolf}
         />
       </div>
     </div>

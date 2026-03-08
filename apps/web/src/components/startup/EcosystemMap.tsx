@@ -1,10 +1,11 @@
 import { useMemo } from "react";
-import type { StartupAgent, StartupTurnLogEntry } from "@openclaw/shared";
+import type { StartupAgent, StartupTurnLogEntry, Alliance } from "@openclaw/shared";
 import { COLORS, FONTS, STARTUP_SIZES } from "../../styles/theme";
 
 interface EcosystemMapProps {
   agents: StartupAgent[];
   turnLog?: StartupTurnLogEntry[];
+  alliances?: Alliance[];
 }
 
 function calcValuation(agent: StartupAgent): number {
@@ -27,13 +28,18 @@ const POSITIONS: Record<number, { x: number; y: number }[]> = {
   4: [{ x: 150, y: 80 }, { x: 400, y: 80 }, { x: 150, y: 200 }, { x: 400, y: 200 }],
 };
 
-export function EcosystemMap({ agents, turnLog }: EcosystemMapProps) {
+export function EcosystemMap({ agents, turnLog, alliances }: EcosystemMapProps) {
   const W = 550;
   const H = 280;
 
-  // Find max valuation for scaling
+  // Find max valuation for scaling, with fallback metric for early game
   const valuations = agents.map((a) => calcValuation(a));
-  const maxVal = Math.max(...valuations, 1);
+  const fallbackMetrics = agents.map((a) => {
+    const r = a.resources;
+    return r.cash / 10_000 + r.compute + r.data + r.model;
+  });
+  const effectiveValues = valuations.map((v, i) => v || fallbackMetrics[i]);
+  const maxVal = Math.max(...effectiveValues, 1);
 
   // Compute recent poach interactions for edges
   const recentPoaches = useMemo(() => {
@@ -100,13 +106,40 @@ export function EcosystemMap({ agents, turnLog }: EcosystemMapProps) {
         );
       })}
 
+      {/* Alliance lines */}
+      {alliances?.map((alliance, idx) => {
+        const fromIdx = agents.findIndex((a) => a.agentId === alliance.agents[0]);
+        const toIdx = agents.findIndex((a) => a.agentId === alliance.agents[1]);
+        if (fromIdx < 0 || toIdx < 0) return null;
+        const from = positions[fromIdx];
+        const to = positions[toIdx];
+        const isBetrayed = alliance.status === "betrayed";
+        return (
+          <line
+            key={`alliance-${idx}`}
+            x1={from.x}
+            y1={from.y}
+            x2={to.x}
+            y2={to.y}
+            stroke={isBetrayed ? "#d94a4a" : "#4ad97a"}
+            strokeWidth={isBetrayed ? 3 : 2}
+            strokeDasharray={isBetrayed ? "2 3" : "8 4"}
+            opacity={isBetrayed ? 0.8 : 0.6}
+          >
+            {isBetrayed && (
+              <animate attributeName="opacity" values="0.8;0.2;0.8" dur="0.5s" repeatCount="3" />
+            )}
+          </line>
+        );
+      })}
+
       {/* Agent bubbles */}
       {agents.map((agent, i) => {
         const pos = positions[i];
-        const val = valuations[i];
+        const val = effectiveValues[i];
         const isActive = agent.status === "active";
 
-        // Scale radius: min 25, max 100, based on sqrt of valuation ratio
+        // Scale radius: min 25, max 100, based on sqrt of effective value ratio
         const ratio = maxVal > 0 ? val / maxVal : 0;
         const radius = isActive ? 25 + Math.sqrt(ratio) * 75 : 10;
 
@@ -203,7 +236,7 @@ export function EcosystemMap({ agents, turnLog }: EcosystemMapProps) {
               fontSize={STARTUP_SIZES.bodySm}
               fontFamily={FONTS.pixel}
             >
-              {formatCash(val)}
+              {formatCash(valuations[i])}
             </text>
 
             {/* Name below bubble */}

@@ -43,3 +43,6 @@ export const STARTUP_PRESETS = [
 ] as const;
 
 export type StartupPresetId = (typeof STARTUP_PRESETS)[number]["id"];
+
+/** Delay in ms between dialogue statements. */
+export const DIALOGUE_STATEMENT_DELAY_MS = 2000;

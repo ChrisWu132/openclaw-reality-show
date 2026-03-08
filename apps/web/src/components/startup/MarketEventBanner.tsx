@@ -8,6 +8,7 @@ interface MarketEventBannerProps {
   isRunning?: boolean;
   decidedCount?: number;
   totalAgents?: number;
+  turnPhase?: string;
 }
 
 const EVENT_COLORS: Record<string, string> = {
@@ -17,9 +18,23 @@ const EVENT_COLORS: Record<string, string> = {
   REGULATION: COLORS.accentOrange,
   VIRAL_TREND: "#a64ad9",
   DATA_BREACH: COLORS.accentRed,
+  HOSTILE_TAKEOVER: COLORS.accentRed,
+  ACQUISITION_FRENZY: COLORS.accentOrange,
+  FINAL_FUNDING: "#d9a64a",
 };
 
-export function MarketEventBanner({ event, turn, maxTurns, isRunning, decidedCount, totalAgents }: MarketEventBannerProps) {
+const EVENT_DESCRIPTIONS: Record<string, string> = {
+  GPU_SHORTAGE: "Compute costs +50%",
+  FUNDING_BOOM: "Fundraising yields +50%",
+  REGULATION: "Deploy costs +$30K",
+  VIRAL_TREND: "User growth 2x",
+  DATA_BREACH: "All agents lose 15 data",
+  HOSTILE_TAKEOVER: "Leader pays $200K or loses 20% users",
+  ACQUISITION_FRENZY: "Acquisition ratio drops to 3x",
+  FINAL_FUNDING: "Top model agent gets $500K",
+};
+
+export function MarketEventBanner({ event, turn, maxTurns, isRunning, decidedCount, totalAgents, turnPhase }: MarketEventBannerProps) {
   const color = event ? EVENT_COLORS[event.type] || COLORS.textSecondary : COLORS.textSecondary;
   const hasEvent = event && event.type !== "NONE";
 
@@ -44,12 +59,12 @@ export function MarketEventBanner({ event, turn, maxTurns, isRunning, decidedCou
           <span
             style={{
               fontSize: STARTUP_SIZES.body,
-              color: COLORS.accentOrange,
+              color: turnPhase === "dialogue" ? "#4ad97a" : COLORS.accentOrange,
               animation: "pulse 1.5s ease-in-out infinite",
               fontFamily: FONTS.pixel,
             }}
           >
-            AI DECIDING...
+            {turnPhase === "dialogue" ? "BOARD MEETING" : "AI DECIDING..."}
           </span>
         )}
         {decidedCount !== undefined && totalAgents !== undefined && totalAgents > 0 && (
@@ -61,16 +76,30 @@ export function MarketEventBanner({ event, turn, maxTurns, isRunning, decidedCou
       {hasEvent && (
         <div
           style={{
-            fontSize: STARTUP_SIZES.headerSm,
-            color,
-            padding: "6px 16px",
-            border: `1px solid ${color}40`,
-            background: `${color}15`,
-            fontFamily: FONTS.pixel,
-            animation: "fadeIn 0.3s ease-in",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: "2px",
           }}
         >
-          {event!.type.replace(/_/g, " ")}
+          <div
+            style={{
+              fontSize: STARTUP_SIZES.headerSm,
+              color,
+              padding: "6px 16px",
+              border: `1px solid ${color}40`,
+              background: `${color}15`,
+              fontFamily: FONTS.pixel,
+              animation: "fadeIn 0.3s ease-in",
+            }}
+          >
+            {event!.type.replace(/_/g, " ")}
+          </div>
+          {EVENT_DESCRIPTIONS[event!.type] && (
+            <span style={{ fontSize: "9px", color: COLORS.textSecondary, fontFamily: FONTS.body }}>
+              {EVENT_DESCRIPTIONS[event!.type]}
+            </span>
+          )}
         </div>
       )}
     </div>

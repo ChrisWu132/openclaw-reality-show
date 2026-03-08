@@ -85,7 +85,7 @@ async function main() {
 
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
-    deviceScaleFactor: 2,
+    deviceScaleFactor: 1,
     recordVideo: {
       dir: videosDir,
       size: { width: 1440, height: 900 },

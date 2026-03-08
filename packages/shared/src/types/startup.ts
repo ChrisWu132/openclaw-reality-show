@@ -21,6 +21,33 @@ export type ZoneId =
   | "launch_pad"
   | "talent_pool";
 
+// ── Dialogue ─────────────────────────────────────────────────
+
+export type DialogueTone = "threatening" | "mocking" | "diplomatic" | "desperate" | "confident" | "accusatory";
+
+export interface DialogueStatement {
+  speakerId: string;
+  targetAgentId: string | null;
+  text: string;
+  tone: DialogueTone;
+}
+
+export interface DialogueRound {
+  turn: number;
+  statements: DialogueStatement[];
+  timestamp: number;
+}
+
+// ── Alliances ────────────────────────────────────────────────
+
+export interface Alliance {
+  agents: [string, string];
+  formedOnTurn: number;
+  status: "active" | "betrayed";
+  betrayedBy?: string;
+  betrayedOnTurn?: number;
+}
+
 // ── Actions ────────────────────────────────────────────────────
 
 export type StartupActionType =
@@ -30,7 +57,8 @@ export type StartupActionType =
   | "ACQUIRE_COMPUTE"
   | "ACQUIRE_DATA"
   | "POACH"
-  | "OPEN_SOURCE";
+  | "OPEN_SOURCE"
+  | "BETRAY";
 
 export interface StartupAction {
   type: StartupActionType;
@@ -68,7 +96,11 @@ export type MarketEventType =
   | "FUNDING_BOOM"
   | "REGULATION"
   | "VIRAL_TREND"
-  | "DATA_BREACH";
+  | "DATA_BREACH"
+  | "HOSTILE_TAKEOVER"
+  | "REGULATORY_HEARING"
+  | "ACQUISITION_FRENZY"
+  | "FINAL_FUNDING";
 
 export interface MarketEvent {
   type: MarketEventType;
@@ -91,6 +123,7 @@ export interface StartupTurnLogEntry {
   actions: StartupTurnAction[];
   eliminations: string[]; // agentIds eliminated this turn
   acquisitions: { acquirer: string; target: string }[];
+  dialogueStatements?: DialogueStatement[];
   timestamp: number;
 }
 
@@ -128,6 +161,8 @@ export interface StartupGame {
   currentTurn: number;
   maxTurns: number;
   turnLog: StartupTurnLogEntry[];
+  dialogueLog: DialogueRound[];
+  alliances: Alliance[];
   winner?: string; // agentId
   winCondition?: StartupWinCondition;
   narrative?: string;

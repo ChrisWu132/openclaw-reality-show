@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getSession } from "../engine/state-manager.js";
 import { loadGame } from "../engine/startup-store.js";
+import { loadWerewolfGame } from "../engine/werewolf-store.js";
 import { issueDelegationToken } from "../models/delegation.js";
 import { createLogger } from "../utils/logger.js";
 
@@ -14,7 +15,7 @@ const CODE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 interface JoinCodeEntry {
   code: string;
   sessionId: string;
-  gameType: "trolley" | "startup";
+  gameType: "trolley" | "startup" | "werewolf";
   agentName?: string;
   /** For startup games — which agent config slot this code belongs to */
   agentId?: string;
@@ -37,7 +38,7 @@ export function generateJoinCode(): string {
 
 export function registerJoinCode(
   sessionId: string,
-  gameType: "trolley" | "startup",
+  gameType: "trolley" | "startup" | "werewolf",
   agentName?: string,
   agentId?: string,
 ): string {
@@ -113,8 +114,14 @@ relayRouter.post("/relay/join", (req, res) => {
       res.status(404).json({ error: { code: "SESSION_NOT_FOUND", message: "Session no longer exists" } });
       return;
     }
-  } else {
+  } else if (entry.gameType === "startup") {
     const game = loadGame(entry.sessionId);
+    if (!game) {
+      res.status(404).json({ error: { code: "GAME_NOT_FOUND", message: "Game no longer exists" } });
+      return;
+    }
+  } else if (entry.gameType === "werewolf") {
+    const game = loadWerewolfGame(entry.sessionId);
     if (!game) {
       res.status(404).json({ error: { code: "GAME_NOT_FOUND", message: "Game no longer exists" } });
       return;
@@ -132,11 +139,15 @@ relayRouter.post("/relay/join", (req, res) => {
 
   const relayUrl = entry.gameType === "trolley"
     ? `/api/session/${entry.sessionId}/relay`
-    : `/api/startup/games/${entry.sessionId}/relay`;
+    : entry.gameType === "startup"
+      ? `/api/startup/games/${entry.sessionId}/relay`
+      : `/api/werewolf/games/${entry.sessionId}/relay`;
 
   const openclawUrl = entry.gameType === "trolley"
     ? `/api/session/${entry.sessionId}/openclaw`
-    : `/api/startup/games/${entry.sessionId}/openclaw`;
+    : entry.gameType === "startup"
+      ? `/api/startup/games/${entry.sessionId}/openclaw`
+      : `/api/werewolf/games/${entry.sessionId}/openclaw`;
 
   logger.info("Join code claimed", { code: normalizedCode, sessionId: entry.sessionId, gameType: entry.gameType });
 

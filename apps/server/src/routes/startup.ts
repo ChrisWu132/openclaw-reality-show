@@ -143,6 +143,15 @@ startupRouter.post("/startup/games/:id/start", requireAuth, async (req, res) => 
     },
     (g, turn, agentId, turnAction) => {
       broadcastStartupEvent(g.id, { type: "startup_agent_action", gameId: g.id, turn, agentId, turnAction });
+    },
+    (g, turn) => {
+      broadcastStartupEvent(g.id, { type: "startup_dialogue_start", gameId: g.id, turn });
+    },
+    (g, turn, statement) => {
+      broadcastStartupEvent(g.id, { type: "startup_dialogue", gameId: g.id, turn, statement });
+    },
+    (g, turn) => {
+      broadcastStartupEvent(g.id, { type: "startup_dialogue_end", gameId: g.id, turn });
     }
   ).catch((err) => {
     logger.error("Startup game failed", { gameId: game.id, error: (err as Error).message });

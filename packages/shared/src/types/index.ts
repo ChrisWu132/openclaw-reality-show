@@ -5,3 +5,5 @@ export * from "./ws-events.js";
 export * from "./startup.js";
 export * from "./startup-ws-events.js";
 export * from "./auth.js";
+export * from "./werewolf.js";
+export * from "./werewolf-ws-events.js";

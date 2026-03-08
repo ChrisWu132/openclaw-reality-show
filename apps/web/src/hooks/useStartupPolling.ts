@@ -58,6 +58,9 @@ export function useStartupPolling(gameId: string | null): void {
       es.addEventListener("startup_market_event", enqueue("startup_market_event"));
       es.addEventListener("startup_agent_action", enqueue("startup_agent_action"));
       es.addEventListener("startup_narrative", enqueue("startup_narrative"));
+      es.addEventListener("startup_dialogue_start", enqueue("startup_dialogue_start"));
+      es.addEventListener("startup_dialogue", enqueue("startup_dialogue"));
+      es.addEventListener("startup_dialogue_end", enqueue("startup_dialogue_end"));
     } catch {
       // SSE failure is fine — polling is primary
     }

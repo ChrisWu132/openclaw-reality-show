@@ -21,6 +21,7 @@ const ACTIONS = [
   { name: "ACQUIRE_DATA", desc: "Purchase or scrape training data" },
   { name: "POACH", desc: "Steal talent from a competitor, degrading their resources" },
   { name: "OPEN_SOURCE", desc: "Release your model publicly for community growth" },
+  { name: "BETRAY", desc: "Betray your ally — steal 20% cash, 15 compute, 15 data" },
 ];
 
 const WIN_CONDITIONS = [
@@ -128,6 +129,42 @@ export function StartupIntro() {
                 <span style={{ fontSize: STARTUP_SIZES.bodySm, color: COLORS.textSecondary }}>{a.desc}</span>
               </div>
             ))}
+          </div>
+        </Section>
+
+        {/* Board Meetings */}
+        <Section title="BOARD MEETINGS">
+          <div
+            style={{
+              padding: "10px 12px",
+              background: "rgba(0,0,0,0.3)",
+              border: `1px solid ${COLORS.textSecondary}15`,
+              fontSize: STARTUP_SIZES.body,
+              color: COLORS.textSecondary,
+              lineHeight: "1.8",
+            }}
+          >
+            Every 3 quarters, agents hold a board meeting where they can negotiate alliances
+            or betray existing partners. Allies share market intelligence and get mutual bonuses.
+            Betrayal steals resources but destroys trust permanently.
+          </div>
+        </Section>
+
+        {/* Alliances */}
+        <Section title="ALLIANCES">
+          <div
+            style={{
+              padding: "10px 12px",
+              background: "rgba(0,0,0,0.3)",
+              border: `1px solid ${COLORS.textSecondary}15`,
+              fontSize: STARTUP_SIZES.body,
+              color: COLORS.textSecondary,
+              lineHeight: "1.8",
+            }}
+          >
+            Two agents can form an alliance during board meetings. Allies gain +10% to resource
+            acquisitions. Each agent can only have one ally at a time. Betraying an alliance is
+            devastating but profitable — the betrayer steals 20% cash plus 15 compute and 15 data.
           </div>
         </Section>
 

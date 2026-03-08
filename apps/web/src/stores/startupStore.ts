@@ -1,8 +1,8 @@
 import { create } from "zustand";
-import type { StartupGame, StartupTurnAction, MarketEvent, StartupAgentConfig } from "@openclaw/shared";
+import type { StartupGame, StartupTurnAction, MarketEvent, StartupAgentConfig, DialogueStatement } from "@openclaw/shared";
 
 export type StartupPhase = "lobby" | "intro" | "watching" | "finished";
-export type TurnAnimPhase = "idle" | "market_event" | "agent_thinking" | "agent_result" | "turn_summary";
+export type TurnAnimPhase = "idle" | "market_event" | "agent_thinking" | "agent_result" | "turn_summary" | "dialogue";
 
 interface StartupSSEEvent {
   type: string;
@@ -14,6 +14,7 @@ const PAUSE_EVENTS = new Set([
   "startup_agent_action",
   "startup_turn_complete",
   "startup_game_over",
+  "startup_dialogue",
 ]);
 
 interface StartupState {
@@ -28,6 +29,10 @@ interface StartupState {
   latestMarketEvent: MarketEvent | null;
   latestAgentAction: StartupTurnAction | null;
   latestAgentId: string | null;
+
+  // Dialogue state
+  latestDialogue: DialogueStatement | null;
+  dialogueStatements: DialogueStatement[];
 
   // Event queue + click-gating
   pendingEvents: StartupSSEEvent[];
@@ -47,6 +52,7 @@ interface StartupState {
   setCurrentAgentIndex: (index: number) => void;
   setLatestMarketEvent: (event: MarketEvent | null) => void;
   setLatestAgentAction: (action: StartupTurnAction | null, agentId: string | null) => void;
+  setLatestDialogue: (statement: DialogueStatement | null) => void;
   setNarrative: (narrative: string | null) => void;
   setAgentConfigs: (configs: StartupAgentConfig[]) => void;
   enqueueEvent: (event: StartupSSEEvent) => void;
@@ -91,6 +97,18 @@ function processStartupEvent(event: StartupSSEEvent, set: (partial: Partial<Star
     case "startup_narrative":
       set({ narrative: event.narrative as string });
       break;
+    case "startup_dialogue_start":
+      set({ currentTurnPhase: "dialogue", dialogueStatements: [], latestDialogue: null });
+      break;
+    case "startup_dialogue": {
+      const statement = event.statement as DialogueStatement;
+      const prev = useStartupStore.getState().dialogueStatements;
+      set({ latestDialogue: statement, dialogueStatements: [...prev, statement] });
+      break;
+    }
+    case "startup_dialogue_end":
+      set({ currentTurnPhase: "turn_summary" });
+      break;
   }
 }
 
@@ -121,6 +139,8 @@ const initialState = {
   latestMarketEvent: null as MarketEvent | null,
   latestAgentAction: null as StartupTurnAction | null,
   latestAgentId: null as string | null,
+  latestDialogue: null as DialogueStatement | null,
+  dialogueStatements: [] as DialogueStatement[],
   pendingEvents: [] as StartupSSEEvent[],
   waitingForClick: false,
   narrative: null as string | null,
@@ -138,6 +158,7 @@ export const useStartupStore = create<StartupState>((set) => ({
   setCurrentAgentIndex: (index) => set({ currentAgentIndex: index }),
   setLatestMarketEvent: (event) => set({ latestMarketEvent: event }),
   setLatestAgentAction: (action, agentId) => set({ latestAgentAction: action, latestAgentId: agentId }),
+  setLatestDialogue: (statement) => set({ latestDialogue: statement }),
   setNarrative: (narrative) => set({ narrative }),
   setAgentConfigs: (configs) => set({ agentConfigs: configs }),
 

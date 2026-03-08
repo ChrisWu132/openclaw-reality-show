@@ -7,6 +7,7 @@ import { initLLMClient } from "./ai/llm-client.js";
 import { initDatabase } from "./db/database.js";
 import { sessionRouter } from "./routes/session.js";
 import { startupRouter } from "./routes/startup.js";
+import { werewolfRouter } from "./routes/werewolf.js";
 import { authRouter } from "./routes/auth.js";
 import { relayRouter } from "./routes/relay.js";
 import { endSessionSSE } from "./sse/sse-connections.js";
@@ -43,10 +44,19 @@ async function startServer(): Promise<void> {
   app.use("/api", authRouter);
   app.use("/api", sessionRouter);
   app.use("/api", startupRouter);
+  app.use("/api", werewolfRouter);
   app.use("/api", relayRouter);
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", activeSessions: sessions.size });
+  });
+
+  // In production, serve the built React frontend
+  const webDist = path.resolve(import.meta.dirname, "../../../apps/web/dist");
+  app.use(express.static(webDist));
+  // SPA fallback: any non-API route serves index.html
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(webDist, "index.html"));
   });
 
   setInterval(() => {

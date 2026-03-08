@@ -81,6 +81,7 @@ export function ReasoningSpotlight({ agents, latestAction, latestAgentId }: Reas
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        minHeight: 0,
         animation: "fadeIn 0.3s ease-in",
       }}
     >
