@@ -5,7 +5,7 @@ import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("werewolf-store");
 
-const DATA_DIR = path.resolve(import.meta.dirname, "../../data/werewolf");
+const DATA_DIR = path.resolve(process.cwd(), "data/werewolf");
 
 function ensureDir(): void {
   if (!fs.existsSync(DATA_DIR)) {

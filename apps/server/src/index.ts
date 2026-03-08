@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
-dotenv.config({ path: path.resolve(import.meta.dirname, "../../../.env") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 import express from "express";
 import { loadAllPersonalities } from "./loaders/personality-loader.js";
 import { initLLMClient } from "./ai/llm-client.js";
@@ -52,7 +52,7 @@ async function startServer(): Promise<void> {
   });
 
   // In production, serve the built React frontend
-  const webDist = path.resolve(import.meta.dirname, "../../../apps/web/dist");
+  const webDist = path.resolve(process.cwd(), "apps/web/dist");
   app.use(express.static(webDist));
   // SPA fallback: any non-API route serves index.html
   app.get("*", (_req, res) => {

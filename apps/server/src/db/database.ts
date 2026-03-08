@@ -13,7 +13,7 @@ export function getDb(): Database.Database {
 }
 
 export function initDatabase(): void {
-  const dataDir = path.resolve(import.meta.dirname, "../../../../data");
+  const dataDir = path.resolve(process.cwd(), "data");
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }

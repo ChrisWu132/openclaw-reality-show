@@ -5,7 +5,7 @@ import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("startup-store");
 
-const DATA_DIR = path.resolve(import.meta.dirname, "../../data/startup");
+const DATA_DIR = path.resolve(process.cwd(), "data/startup");
 
 function ensureDir(): void {
   if (!fs.existsSync(DATA_DIR)) {

@@ -6,7 +6,7 @@ import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("personality-loader");
 
-const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
+const PROJECT_ROOT = process.cwd();
 const PERSONALITIES_DIR = resolve(PROJECT_ROOT, "personalities");
 const PRESETS_DIR = resolve(PERSONALITIES_DIR, "presets");
 const STARTUP_PRESETS_DIR = resolve(PRESETS_DIR, "startup");
