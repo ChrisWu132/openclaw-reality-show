@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "npx esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js --packages=external",
+    "build": "npx esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js --external:@google/generative-ai --external:bcryptjs --external:better-sqlite3 --external:dotenv --external:express --external:jsonwebtoken --external:uuid",
     "start": "node dist/index.js",
     "test": "vitest run"
   },
